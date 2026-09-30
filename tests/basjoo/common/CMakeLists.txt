@@ -1,0 +1,9 @@
+basjoo_cxx_test(
+  NAME
+    test_common_fsm
+  SRCS
+    "test_fsm.cpp"
+  DEPS
+    common_fsm
+    common_logging
+)
