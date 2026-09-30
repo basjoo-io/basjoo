@@ -1,0 +1,10 @@
+basjoo_cxx_library(
+  NAME
+    quadrotor_dynamics_model
+  HDRS
+    "dynamics_model.hpp"
+  DEPS
+    zpp_bits
+    math_dense_arithmetic_base
+    math_integrate_mode
+)

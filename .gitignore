@@ -1,0 +1,57 @@
+# CMakePresets.json File
+/CMakeUserPresets.json
+
+# Build Directory
+/out
+/out/
+/build
+/build/
+
+# xmake Build Artifacts
+/.xmake/
+
+# third-party dependencies
+/third_party/
+
+# Compile Commands file
+/compile_commands.json
+
+# Visual Studio Configuration
+/.vs/
+
+# Vscode Configuration
+/.vscode/
+
+# Zed Configuration
+/.zed/
+
+# Helix Configuration
+/.helix/
+
+# Python (uv)
+/.venv/
+
+# Python build artifacts (scikit-build editable install drops _core.so + stubs here)
+/src/basjoo/_core*.so
+/src/basjoo/_core*.pyd
+/src/basjoo/_core.pyi
+/src/basjoo/py.typed
+/src/basjoo/__pycache__/
+/src/basjoo/**/__pycache__/
+__pycache__/
+
+# Cache Directory
+/*cache
+/*cache/
+
+# Youcompleteme Configuration
+/.ycm_extra_conf.py
+
+# Claude Code local settings (personal overrides)
+/.claude/settings.local.json
+
+# Cursor local configuration
+/.cursor/mcp.json
+
+# Force Include Developer Files
+/!developers/**

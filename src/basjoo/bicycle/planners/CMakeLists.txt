@@ -1,0 +1,129 @@
+basjoo_cxx_library(
+  NAME
+    bicycle_dualism
+  HDRS
+    "dualism.hpp"
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_route_line
+  HDRS
+    "route_line.hpp"
+  DEPS
+    zpp_bits
+    math_piecewise_quintic_curve
+    math_utils
+    math_vec2
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_path
+  HDRS
+    "path.hpp"
+  DEPS
+    zpp_bits
+    math_piecewise_quintic_curve
+    math_utils
+    math_vec2
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_motion
+  HDRS
+    "motion.hpp"
+  DEPS
+    zpp_bits
+    math_concepts
+    math_vec2
+    math_piecewise_quintic_function
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_fence
+  HDRS
+    "fence.hpp"
+  DEPS
+    zpp_bits
+    bicycle_dualism
+    math_concepts
+    math_vec2
+    math_piecewise_linear_function
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_border
+  HDRS
+    "border.hpp"
+  DEPS
+    zpp_bits
+    bicycle_dualism
+    math_concepts
+    math_piecewise_linear_curve
+    math_vec2
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_route_line_cubic_acc_planner
+  HDRS
+    "route_line_cubic_acc_planner.hpp"
+  DEPS
+    common_logging
+    cvxopm_osqp_problem
+    cvxopm_osqp_solver
+    bicycle_motion
+    bicycle_fence
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_route_line_quintic_acc_planner
+  HDRS
+    "route_line_quintic_acc_planner.hpp"
+  DEPS
+    common_logging
+    cvxopm_osqp_problem
+    cvxopm_osqp_solver
+    bicycle_motion
+    bicycle_fence
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_route_line_cubic_offset_planner
+  HDRS
+    "route_line_cubic_offset_planner.hpp"
+  DEPS
+    common_logging
+    math_piecewise_cubic_curve
+    cvxopm_osqp_problem
+    cvxopm_osqp_solver
+    bicycle_path
+    bicycle_border
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_route_line_quintic_offset_planner
+  HDRS
+    "route_line_quintic_offset_planner.hpp"
+  DEPS
+    common_logging
+    math_piecewise_quintic_curve
+    cvxopm_osqp_problem
+    cvxopm_osqp_solver
+    bicycle_path
+    bicycle_border
+)
+
+basjoo_cxx_library(
+  NAME
+    bicycle_route_line_kinematics_planner
+  HDRS
+    "route_line_kinematics_planner.hpp"
+)

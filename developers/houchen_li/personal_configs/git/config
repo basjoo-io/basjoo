@@ -1,0 +1,17 @@
+[core]
+    editor = code --wait
+    whitespace = tab-in-indent
+[diff]
+	tool = vscode
+[merge]
+	tool = vscode
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+[mergetool "vscode"]
+	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+[difftool "zed"]
+    cmd = zed --wait --diff \"$LOCAL\" \"$REMOTE\"
+[mergetool "zed"]
+    cmd = zed --wait \"$MERGED\"
+    trustExitCode = false
+    keepBackup = false

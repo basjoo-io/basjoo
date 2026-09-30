@@ -1,0 +1,7 @@
+target("bicycle_kinematics_flow_controller")
+    set_kind("headeronly")
+    add_includedirs("../../..")
+    add_headerfiles("kinematics_flow_controller.hpp")
+    add_packages("zpp_bits", {public = true})
+    add_deps("bicycle_kinematics_model", "math_dense_arithmetic_base", "math_integrate_mode")
+target_end()
