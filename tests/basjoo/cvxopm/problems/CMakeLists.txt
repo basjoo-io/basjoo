@@ -1,0 +1,24 @@
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_osqp_problem
+  SRCS
+    "test_osqp_problem.cpp"
+  DEPS
+    cvxopm_osqp_problem
+)
+
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_dense_problem
+  SRCS
+    "test_dense_problem.cpp"
+  DEPS
+    zpp_bits
+    math_utils
+    math_vectorx
+    math_matrixx
+    math_linear_mdfunction
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+    cvxopm_dense_problem
+)

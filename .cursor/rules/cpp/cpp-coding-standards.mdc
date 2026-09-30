@@ -1,0 +1,136 @@
+---
+globs: "*.cpp,*.hpp"
+description: "C++23 Microsoft-oriented coding standards for basjoo: trailing return types, namespaces, hot-path attributes, and modern C++ usage."
+---
+# C++ Coding Standards (basjoo)
+
+## 1. Baseline Style
+
+- **C++23** with **GNU extensions** where needed for performance or toolchain compatibility.
+- **clang-format**: Microsoft base style (see `.clang-format`). Do not fight the formatter except for documented `clang-format off` blocks when unavoidable.
+- **No** Google C++ Style Guide as authority—use basjoo rules and `.github/instructions/cpp-coding-standards.instructions.md`.
+
+## 2. Trailing Return Types
+
+**MANDATORY** for new and updated functions:
+
+```cpp
+auto euclidean(Vec2d a, Vec2d b) noexcept -> double;
+```
+
+Exception: constructors, destructors, and operators where the project already uses a consistent alternate style—stay consistent within a file.
+
+## 3. Naming
+
+| Element | Convention | Example |
+| ------- | ---------- | ------- |
+| Namespace | `snake_case` | `basjoo::math` |
+| Class / struct | `PascalCase` | `CooMatrix` |
+| Function / method | `camelCase` | `updateCoeff` |
+| Public data members | `snake_case` | `row_ptr` |
+| Private members | `m_` prefix | `m_data` |
+| Constants | `kPascalCase` | `kEpsilon` |
+| Concepts | `PascalCase` | `ScalarArithmetic` |
+| Macros | `BASJOO_UPPER_SNAKE` | `BASJOO_CHECK_PARAMS` |
+
+## 4. Headers and Includes
+
+- **`#pragma once`** for include guards.
+- **Include order**: C/C++ standard library → third-party → `basjoo/...`, groups separated by blank lines; alphabetical within groups when practical.
+- **Include what you use**; do not rely on transitive includes.
+- Prefer **nested namespace** syntax: `namespace basjoo::math { ... }`.
+- **Never** `using namespace` in headers. In `.cpp`, avoid `using namespace` at global scope.
+
+## 5. Class Design
+
+- **`final`** on classes not designed for inheritance.
+- **`explicit`** on single-argument constructors unless implicit conversion is intentional and documented.
+- **`override`** on all virtual overrides; **`virtual` destructor** when polymorphic.
+- Prefer **`struct`** for passive aggregates; **`class`** when enforcing invariants.
+- Use macros from `basjoo/common/utils/macros.hpp` for copy/move control (`ENABLE_COPY`, `DISABLE_COPY`, etc.).
+
+## 6. GNU Attributes (hot paths)
+
+Use judiciously on proven hot paths:
+
+```cpp
+[[using gnu: always_inline]]
+[[using gnu: pure, always_inline]]
+[[using gnu: const, always_inline, leaf]]
+[[using gnu: always_inline, leaf, hot]]
+```
+
+## 7. `constexpr` and `noexcept`
+
+- Mark functions **`constexpr`** when they can be; use **`noexcept`** when failure is not part of the contract.
+- Parameter-checked accessors often use: `noexcept(!BASJOO_CHECK_PARAMS)` or equivalent—follow existing patterns in the type.
+
+## 8. Error Handling
+
+- Use **exceptions** (`std::invalid_argument`, `std::out_of_range`, etc.) for unrecoverable misuse.
+- **`BASJOO_CHECK_PARAMS`**: when enabled, validate preconditions and throw or assert per existing module style—**do not** introduce alternative status-channel types.
+
+## 9. Concepts and Templates
+
+- Constrain templates with **concepts** and meaningful names (`Scalar`, `Index`, ...).
+- Prefer **requires** clauses or `static_assert` with clear messages for template diagnostics.
+
+## 10. BLAS / LAPACK
+
+- Call the configured **BLAS/LAPACK** (e.g. OpenBLAS); do not reimplement matrix multiply or dense factorization unless explicitly scoped as experimental research code.
+
+## 11. Namespaces
+
+- Never **`using namespace std`** or **`using namespace basjoo`** in headers.
+- Close namespaces with an end comment: `} // namespace basjoo::math`.
+
+## 12. Comments
+
+- **File-level**: Doxygen `@file`, `@brief`, `@copyright` (see `basic/copyright.mdc`).
+- Avoid repeating obvious behavior in line comments; document invariants, units, and non-obvious numerics.
+
+## 13. Serialization
+
+- Use **zpp_bits** where the project already serializes types — declarative `using serialize = zpp::bits::members<N>;` (with `friend zpp::bits::access;` for private members) by default, or an explicit `static constexpr auto serialize(auto& archive, auto& self) -> zpp::bits::errc` for asymmetric cases or types with deleted move/copy; add **roundtrip tests** (see `cpp-testing-guidelines.mdc`).
+
+## 14. Formatting Nuances
+
+- Floating literals: include digits on both sides of the decimal (`1.0`, not `1.`).
+- Prefer **trailing return type** consistently for free functions and member functions.
+
+## 15. `auto` Rules
+
+- Use `auto` when the type is clear from the right-hand side (`make_unique`, `static_cast`, iterators).
+- Use **`auto&`** or **`const auto&`** when the initializer is a reference to avoid copies.
+- Range-for: `for (const auto& x : items)`.
+
+## 16. Lambdas
+
+- Keep lambdas **short**; use named functions for multi-step logic.
+- **Avoid** default captures `[=]` / `[&]`; capture explicitly.
+- Be careful capturing **`this`**; prefer pointers or refs with clear lifetime.
+
+## 17. `switch` and Casts
+
+- Prefer **`std::visit`** on `std::variant` where appropriate; otherwise `switch` with **`default`** for non-enumerated values.
+- Use **`static_cast`**, **`reinterpret_cast`**, **`const_cast`**—never C-style casts.
+- Annotate intentional fall-through with **`[[fallthrough]]`**.
+
+## 18. `std::span` and `std::string_view`
+
+- Use **`std::span<const T>`** / **`std::span<T>`** instead of pointer + length for buffers.
+- Use **`std::string_view`** for read-only string parameters; **do not store** `string_view` in owning objects unless lifetime is guaranteed.
+
+## 19. Designated Initializers
+
+- Use **designated initializers** for aggregates when readability improves; field order must match the type definition.
+
+## 20. Type Aliases
+
+- Prefer **`using`** over `typedef`.
+- Template aliases: `template <class T> using Vec3 = ...`.
+- Scalar variants use **`s` / `d` / `c` / `z`** suffixes consistently.
+
+## 21. Move Semantics
+
+- Move when transferring ownership; mark move operations `noexcept` when appropriate for STL compatibility.

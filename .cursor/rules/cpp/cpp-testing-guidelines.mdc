@@ -1,0 +1,61 @@
+---
+globs: "test_*.cpp"
+description: "doctest conventions for basjoo C++ tests: main macro, templates, approximations, Boost roundtrips."
+---
+# C++ Testing Guidelines (doctest)
+
+## 1. Framework
+
+- **doctest** 2.4.12 is the unit test framework (pulled via CMake / xmake).
+- Tests live under **`tests/basjoo/`**, mirroring `src/basjoo/` layout.
+- Test sources use the **`test_` prefix** (`test_<name>.cpp`).
+
+## 2. Single Main Translation Unit
+
+**Exactly one** linked test executable (or one TU per binary) may define:
+
+```cpp
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest/doctest.h"
+```
+
+Place **`#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN`** **before** `#include "doctest/doctest.h"`. Never duplicate across TUs linked into the same binary.
+
+## 3. Includes and Namespaces
+
+- First include: typically the **header under test**, then project headers, then doctest.
+- Put tests in the **same namespace** as the code under test (`namespace basjoo::math { ... }`) unless a fixture namespace improves clarity.
+
+## 4. `TEST_CASE` and `TEST_CASE_TEMPLATE`
+
+- Use **`TEST_CASE("descriptive name")`** for single-type tests.
+- Use **`TEST_CASE_TEMPLATE`** for verifying behavior across **`float`**, **`double`**, and complex types as appropriate.
+
+```cpp
+TEST_CASE_TEMPLATE("norm matches", T, float, double) {
+  const T x{3}, y{4};
+  REQUIRE(basjoo::math::norm(Vec2<T>{x, y}) == doctest::Approx(5));
+}
+```
+
+## 5. Floating-Point Comparisons
+
+- Use **`doctest::Approx`** with explicit **`epsilon`** / **`scale`** when comparing non-trivial expressions:
+
+```cpp
+REQUIRE(value == doctest::Approx(expected).epsilon(1e-12));
+```
+
+## 6. zpp_bits Serialization Roundtrip
+
+For types that support **zpp_bits** serialization, add tests that **serialize and deserialize** to a new object and compare equal to the original (or within tolerance for floats).
+
+## 7. Naming
+
+- **`TEST_CASE` names** read like specifications: `"Vector norm matches hypot for 3-4-5 triangle"`.
+- Prefer **REQUIRE** for hard preconditions; **CHECK** when collecting multiple independent assertions.
+
+## 8. Organization
+
+- One logical group per file or per nested `SUBCASE` as fits readability.
+- Keep tests **independent**: no order dependence; avoid global mutable state.

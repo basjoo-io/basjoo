@@ -1,0 +1,41 @@
+---
+alwaysApply: true
+description: "Security requirements and best practices for the basjoo project."
+---
+# Security Requirements
+
+## 1. Secrets Management
+
+**STRICTLY PROHIBITED**: Hardcoding secrets in source code
+
+### Forbidden Patterns
+- **NEVER** hardcode API keys, tokens, or passwords in code
+- **NEVER** commit `.env` files with real credentials
+- **NEVER** include secrets in configuration files checked into version control
+
+### Examples of What NOT to Do
+```python
+# BAD - Hardcoded secret
+API_KEY = "sk-1234567890abcdef"
+DATABASE_PASSWORD = "mypassword123"
+```
+
+```cpp
+// BAD - Hardcoded token
+const std::string kAuthToken = "bearer_token_12345";
+```
+
+### Correct Approach
+- Use environment variables for secrets
+- Use secret management systems (e.g., HashiCorp Vault)
+- Use configuration files that are NOT checked into version control
+
+```python
+# GOOD - Read from environment
+API_KEY = os.environ.get("API_KEY")
+```
+
+```cpp
+// GOOD - Read from environment or config
+std::string auth_token = std::getenv("AUTH_TOKEN");
+```

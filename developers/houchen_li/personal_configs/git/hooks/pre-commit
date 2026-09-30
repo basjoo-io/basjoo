@@ -1,0 +1,124 @@
+#!/bin/bash
+
+set -e
+
+echo "Running pre-commit checks..."
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+check_tool() {
+    if ! command -v "$1" &> /dev/null; then
+        echo -e "${YELLOW}Warning: $1 is not installed or not in PATH${NC}"
+        echo -e "${YELLOW}   Skipping $1 checks. Install $1 to enable formatting checks.${NC}"
+        return 1
+    fi
+    return 0
+}
+
+clang_format_available=0
+ruff_available=0
+
+if check_tool "clang-format"; then
+    clang_format_available=1
+fi
+
+if check_tool "ruff"; then
+    ruff_available=1
+fi
+
+if [ $clang_format_available -eq 0 ] && [ $ruff_available -eq 0 ]; then
+    echo -e "${YELLOW}Note: No formatting tools available. Commit will proceed without formatting checks.${NC}"
+    echo -e "${YELLOW}   Consider installing clang-format and ruff for code quality checks.${NC}"
+    exit 0
+fi
+
+CPP_EXTENSIONS=(
+    "c" "cc" "cpp" "cxx" "c++" "C"
+    "h" "hh" "hpp" "hxx" "h++"
+    "ixx" "cppm" "ccm" "tpp" "hpp.in"
+)
+
+PYTHON_EXTENSIONS=(
+    "py" "pyi" "pyx" "pxd"
+)
+
+cpp_pattern=".*\.($(IFS=\|; echo "${CPP_EXTENSIONS[*]}"))$"
+python_pattern=".*\.($(IFS=\|; echo "${PYTHON_EXTENSIONS[*]}"))$"
+
+cpp_files=()
+python_files=()
+
+while IFS= read -r file; do
+    if [[ "$file" =~ $cpp_pattern ]] && [ -f "$file" ]; then
+        cpp_files+=("$file")
+    elif [[ "$file" =~ $python_pattern ]] && [ -f "$file" ]; then
+        python_files+=("$file")
+    fi
+done < <(git diff --cached --name-only --diff-filter=AM)
+
+has_errors=0
+
+if [ ${#cpp_files[@]} -gt 0 ]; then
+    if [ $clang_format_available -eq 1 ]; then
+        echo -e "\n${BLUE}Checking ${#cpp_files[@]} C/C++ file(s) with clang-format...${NC}"
+
+        for file in "${cpp_files[@]}"; do
+            if clang-format --dry-run --Werror "$file" > /dev/null 2>&1; then
+                echo -e "  ${GREEN}OK${NC} $file"
+            else
+                echo -e "  ${RED}FAIL${NC} $file - formatting issues detected"
+                has_errors=1
+            fi
+        done
+
+        if [ $has_errors -eq 1 ]; then
+            echo -e "\n${YELLOW}To fix C/C++ formatting issues, run:${NC}"
+            echo "  clang-format -i ${cpp_files[*]}"
+            echo "  Then: git add ${cpp_files[*]}"
+        fi
+    else
+        echo -e "\n${YELLOW}Found ${#cpp_files[@]} C/C++ file(s), but clang-format is not available${NC}"
+        echo -e "${YELLOW}   Install clang-format to enable C/C++ formatting checks${NC}"
+    fi
+else
+    echo -e "\n${GREEN}No C/C++ files to check.${NC}"
+fi
+
+if [ ${#python_files[@]} -gt 0 ]; then
+    if [ $ruff_available -eq 1 ]; then
+        echo -e "\n${BLUE}Checking ${#python_files[@]} Python file(s) with ruff...${NC}"
+
+        for file in "${python_files[@]}"; do
+            if ruff check --quiet "$file" 2>/dev/null; then
+                echo -e "  ${GREEN}OK${NC} $file"
+            else
+                echo -e "  ${RED}FAIL${NC} $file - formatting/linting issues detected"
+                has_errors=1
+            fi
+        done
+
+        if [ $has_errors -eq 1 ]; then
+            echo -e "\n${YELLOW}To fix Python formatting issues, run:${NC}"
+            echo "  ruff check --fix ${python_files[*]}"
+            echo "  Then: git add ${python_files[*]}"
+        fi
+    else
+        echo -e "\n${YELLOW}Found ${#python_files[@]} Python file(s), but ruff is not available${NC}"
+        echo -e "${YELLOW}   Install ruff to enable Python formatting checks${NC}"
+    fi
+else
+    echo -e "\n${GREEN}No Python files to check.${NC}"
+fi
+
+if [ $has_errors -eq 1 ]; then
+    echo -e "\n${RED}Pre-commit checks failed!${NC}"
+    echo "Please fix the formatting issues before committing."
+    exit 1
+else
+    echo -e "\n${GREEN}All pre-commit checks passed!${NC}"
+    exit 0
+fi

@@ -1,0 +1,120 @@
+# Alternate pyproject.toml using xmake (via the xmake-python PEP 517 backend,
+# https://pypi.org/project/xmake-python/) instead of scikit-build-core/CMake.
+#
+# pyproject.toml is the active config (scikit-build-core/CMake is the default
+# build backend). To build with xmake instead:
+#
+#   cp pyproject.xmake.toml pyproject.toml
+#   uv sync
+#
+# The [project]/[dependency-groups]/[tool.uv]/[tool.pytest]/[tool.ruff]/
+# [tool.pyright]/[tool.ty] sections below are kept identical to pyproject.toml;
+# keep them in sync by hand if either file's shared sections change.
+
+[project]
+name = "basjoo"
+version = "0.0.1a1"
+description = "The Fundamental Math Basis for Autonomous Driving Vehicles and Robotics."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [{ name = "Houchen Li", email = "houchen_li@hotmail.com" }]
+keywords = [
+  "math",
+  "linear-algebra",
+  "splines",
+  "convex-optimization",
+  "motion-planning",
+  "autonomous-driving",
+  "robotics",
+]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/basjoo-io/basjoo"
+Repository = "https://github.com/basjoo-io/basjoo"
+Issues = "https://github.com/basjoo-io/basjoo/issues"
+
+[dependency-groups]
+dev = [
+  "nanobind",
+  "pyright",
+  "pytest",
+  "ruff",
+  "ty",
+]
+
+[build-system]
+requires = ["xmake-python"]
+build-backend = "xmake_python"
+
+[tool.xmake.module]
+name = "basjoo"
+
+[tool.xmake.xmaker]
+# xmake.lua itself selects the toolchain per host platform (see root
+# xmake.lua); no --toolchain= needs to be passed here. tempname is pinned to
+# a persistent, project-relative directory (instead of the default ephemeral
+# temp dir) so repeated builds reuse xmake's incremental build cache.
+tempname = "out/build/xmake-python"
+
+[tool.uv]
+package = true
+link-mode = "copy"
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "SIM", # flake8-simplify
+  "RUF", # ruff-specific rules
+]
+fixable = ["ALL"]
+per-file-ignores = { "__init__.py" = ["F401"] }
+
+[tool.ruff.lint.isort]
+known-first-party = ["basjoo"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+
+[tool.ty.environment]
+python-version = "3.14"
+python-platform = "linux"
+
+[tool.ty.terminal]
+error-on-warning = true

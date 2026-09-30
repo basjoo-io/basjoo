@@ -1,0 +1,68 @@
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_osqp_solver
+  SRCS
+    "test_osqp_solver.cpp"
+  DEPS
+    cvxopm_osqp_problem
+    cvxopm_settings
+    cvxopm_result
+    cvxopm_info
+    cvxopm_osqp_solver
+)
+
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_lnsrch_solver
+  SRCS
+    "test_lnsrch_solver.cpp"
+  DEPS
+    math_vectorx
+    math_matrixx
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+    cvxopm_dense_problem
+    cvxopm_lnsrch_solver
+)
+
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_bfgs_solver
+  SRCS
+    "test_bfgs_solver.cpp"
+  DEPS
+    math_vectorx
+    math_matrixx
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+    cvxopm_dense_problem
+    cvxopm_bfgs_solver
+)
+
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_lbfgs_solver
+  SRCS
+    "test_lbfgs_solver.cpp"
+  DEPS
+    math_vectorx
+    math_matrixx
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+    cvxopm_dense_problem
+    cvxopm_lbfgs_solver
+)
+
+basjoo_cxx_test(
+  NAME
+    test_cvxopm_amoeba_solver
+  SRCS
+    "test_amoeba_solver.cpp"
+  DEPS
+    math_vectorx
+    math_matrixx
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+    cvxopm_dense_problem
+    cvxopm_amoeba_solver
+)

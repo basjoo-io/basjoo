@@ -1,0 +1,143 @@
+name: darwin-arm64
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+permissions:
+  actions: write
+
+jobs:
+  darwin-arm64:
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [darwin-gcc-arm64, darwin-clang-arm64]
+        build_type: [Debug, Release, RelWithDebInfo, MinSizeRel]
+        build_shared: [ON, OFF]
+        use_blas_lapack: [OpenBLAS]
+        use_boost_unordered: [ON]
+
+    runs-on: macos-26
+    name: ${{ matrix.toolchain }}.${{ matrix.build_type }}.build-shared-${{ matrix.build_shared }}.boost-unordered-${{ matrix.use_boost_unordered }}.blas-lapack-${{ matrix.use_blas_lapack }}
+    env:
+      GCC_VERSION: "16"
+      CLANG_VERSION: "23"
+
+    steps:
+      - name: Checkout repository
+        id: checkout-repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup gcc
+        id: setup-gcc
+        if: matrix.toolchain == 'darwin-gcc-arm64'
+        run: |
+          brew install gcc
+          for tool in gcc g++ gfortran cpp gcc-ar gcc-nm gcc-ranlib gcov gcov-tool gcov-dump lto-dump; do
+            ln -sf $(brew --prefix)/bin/${tool}-${{ env.GCC_VERSION }} $(brew --prefix)/bin/${tool}
+          done
+        shell: bash
+
+      - name: Setup clang
+        id: setup-clang
+        if: matrix.toolchain == 'darwin-clang-arm64'
+        run: |
+          brew install llvm libomp flang
+          LLVM_ROOT=$(brew --prefix llvm)
+          OpenMP_ROOT=$(brew --prefix libomp)
+          Flang_ROOT=$(brew --prefix flang)
+          echo "LLVM_ROOT=${LLVM_ROOT}" >> $GITHUB_ENV
+          echo "OpenMP_ROOT=${OpenMP_ROOT}" >> $GITHUB_ENV
+          echo "Flang_ROOT=${Flang_ROOT}" >> $GITHUB_ENV
+          echo "SDKROOT=$(xcrun --show-sdk-path)${SDKROOT:+:${SDKROOT}}" >> $GITHUB_ENV
+          echo "${LLVM_ROOT}/bin" >> $GITHUB_PATH
+          echo "${OpenMP}/bin" >> $GITHUB_PATH
+          echo "${Flang_ROOT}/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setup ccache
+        id: setup-ccache
+        uses: Chocobo1/setup-ccache-action@v1
+        with:
+          store_cache: false
+          restore_cache: false
+          remove_stale_cache: true
+          override_cache_key: ccache_${{ matrix.toolchain }}_${{ matrix.build_type }}_build-shared-${{ matrix.build_shared }}_boost-unordered-${{ matrix.use_boost_unordered }}_blas-lapack-${{ matrix.use_blas_lapack }}
+
+      - name: Setup vcpkg
+        id: setup-vcpkg
+        uses: lukka/run-vcpkg@v11
+
+      - name: Setup uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Setup Python virtual environment
+        id: setup-python-venv
+        # Match the documented flow (see README): the venv is always created with
+        # --system-site-packages; harmless here since CI has no ROS.
+        run: |
+          uv venv --system-site-packages
+          uv sync --no-install-project
+        shell: bash
+
+      - name: Setup CMake
+        id: setup-cmake
+        uses: lukka/get-cmake@latest
+
+      - name: CMake test
+        id: cmake-test
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.toolchain }}
+          configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}', '-DBUILD_SHARED_LIBS=${{ matrix.build_shared }}', '-DBASJOO_USE_BOOST_UNORDERED=${{ matrix.use_boost_unordered }}', '-DBASJOO_USE_BLAS_LAPACK=${{ matrix.use_blas_lapack }}']"
+          buildPreset: ${{ matrix.toolchain }}
+          buildPresetAdditionalArgs: "[]"
+          testPreset: ${{ matrix.toolchain }}
+          testPresetAdditionalArgs: "[]"
+
+      - name: Setup XMake
+        id: setup-xmake
+        if: false
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: XMake test
+        id: xmake-test
+        if: false
+        shell: bash
+        run: |
+          case "${{ matrix.build_type }}" in
+            Debug) xmake_mode=debug ;;
+            Release) xmake_mode=release ;;
+            RelWithDebInfo) xmake_mode=releasedbg ;;
+            MinSizeRel) xmake_mode=minsizerel ;;
+          esac
+          case "${{ matrix.build_shared }}" in
+            ON) xmake_kind=shared ;;
+            OFF) xmake_kind=static ;;
+          esac
+          case "${{ matrix.use_boost_unordered }}" in
+            ON) xmake_boost_unordered=y ;;
+            OFF) xmake_boost_unordered=n ;;
+          esac
+          case "${{ matrix.use_blas_lapack }}" in
+            OpenBLAS) xmake_blas_lapack=openblas ;;
+            Netlib) xmake_blas_lapack=netlib ;;
+            MKL) xmake_blas_lapack=mkl ;;
+            OFF) xmake_blas_lapack=n ;;
+          esac
+          xmake f -y \
+            --toolchain=${{ matrix.toolchain }} \
+            --mode="${xmake_mode}" \
+            --kind="${xmake_kind}" \
+            --basjoo_use_boost_unordered="${xmake_boost_unordered}" \
+            --basjoo_use_blas_lapack="${xmake_blas_lapack}"
+          xmake build -y
+          xmake test -y -v

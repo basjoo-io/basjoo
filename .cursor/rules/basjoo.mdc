@@ -1,0 +1,114 @@
+---
+alwaysApply: true
+description: "basjoo project context: C++23 math library, CMake/xmake, namespaces, and build conventions."
+---
+# basjoo — Project Context
+
+## Overview
+
+basjoo is a **BSD 3-Clause** high-performance **C++23** mathematical library (with **GNU extensions**) for autonomous driving and robotics: dense/sparse linear algebra, curves, convex optimization, and bicycle dynamics models. **Python** support is planned; prefer **uv** + **ruff** + **pyright** when Python code exists.
+
+## Technical Requirements
+
+| Area | Requirement |
+| ---- | ----------- |
+| C++ standard | C++23 |
+| CMake | 3.31+ |
+| Generators | Ninja (CMake), xmake optional |
+| Format (C++) | clang-format 20+, Microsoft-based style |
+| Lint (C++) | clang-tidy 20+ |
+| Format / lint (Python) | ruff, pyright |
+| Tests (C++) | doctest 2.4.12 |
+| Tests (Python) | pytest via `uv run pytest` |
+| License | BSD 3-Clause |
+
+## Namespace Structure
+
+| Namespace | Purpose |
+| --------- | ------- |
+| `basjoo` | Root |
+| `basjoo::common` | Shared utilities, macros, logging |
+| `basjoo::math` | Core math |
+| `basjoo::math::pmr` | PMR allocator variants |
+| `basjoo::math::detail` | Private implementation |
+| `basjoo::cvxopm` | Convex optimization |
+| `basjoo::bicycle` | Motion models |
+
+## Module Dependency Graph
+
+`common` → `math` → `cvxopm` → `bicycle` (acyclic).
+
+## Third-Party Dependencies (typical)
+
+| Library | Role |
+| ------- | ---- |
+| Boost | Unordered containers |
+| zpp_bits | Serialization |
+| doctest | Unit tests |
+| spdlog | Logging |
+| OSQP / qdldl | QP solvers |
+| OpenBLAS | BLAS/LAPACK |
+| cxxopts, Matplot++ | Test drivers / plots |
+
+Exact versions are pinned via **CPM** / **vcpkg** / **xmake** recipes—follow existing `cmake/` and `xmake/` patterns.
+
+## Common Macros
+
+Defined in `basjoo/common/utils/macros.hpp` (names may vary slightly—follow tree):
+
+- `ENABLE_COPY` / `DISABLE_COPY`, `ENABLE_MOVE` / `DISABLE_MOVE`, `ENABLE_COPY_AND_MOVE` / `DISABLE_COPY_AND_MOVE`
+- `ENABLE_IMPLICIT_CONSTRUCTORS` / `DISABLE_IMPLICIT_CONSTRUCTORS`
+- `MAKE_SINGLETON`
+- `BASJOO_CHECK_PARAMS` — when enabled, validate indices/params (often throws `std::out_of_range`); not a status type
+
+## Concepts & Type Aliases
+
+- Prefer **C++20 concepts** for template constraints (`ScalarArithmetic`, iterators, etc.).
+- **Type-alias suffixes**: `s` = float, `d` = double, `c` = `std::complex<float>`, `z` = `std::complex<double>` (e.g. `Vec2s`, `Vec3d`).
+
+## Build Commands (CMake)
+
+```bash
+cmake --preset linux-gcc-x64
+cmake --build --preset linux-gcc-x64
+ctest --preset linux-gcc-x64
+ctest --preset linux-gcc-x64 -R <regex>
+```
+
+Other presets: `linux-clang-x64`, `darwin-gcc-arm64`, `darwin-clang-arm64`, `windows-msvc-x64`. Binary dir: `out/build/<preset>` (see `CMakePresets.json`).
+
+## Build Commands (xmake)
+
+```bash
+xmake config -m release
+xmake build
+xmake run <target>
+```
+
+## Build Configuration Options (CMake cache)
+
+| Option | Typical role |
+| ------ | ------------- |
+| `BASJOO_CHECK_PARAMS` | Extra parameter checks (`ON`/`OFF`) |
+| `BASJOO_BUILD_TESTING` | Build tests |
+| `BASJOO_ENABLE_INSTALL` | Install rules |
+| `BASJOO_USE_BLAS_LAPACK` | BLAS/LAPACK backend selection |
+| `BASJOO_USE_BOOST_UNORDERED` | Boost unordered containers |
+| `BASJOO_USE_SIMD` | SIMD kernels |
+
+## CMake Helper Functions (`cmake/utils.cmake`)
+
+| Function | Purpose |
+| -------- | ------- |
+| `basjoo_cxx_library(NAME ... HDRS ... SRCS ... DEPS ...)` | Header-only or compiled library targets; exposes `basjoo::<NAME>` alias |
+| `basjoo_cxx_module(NAME ... IXXS ... SRCS ... DEPS ...)` | C++20 modules (`.ixx`), when used |
+| `basjoo_cxx_test(NAME ... SRCS ... DEPS ...)` | doctest executable + `add_test` |
+
+**Keywords**: `PUBLIC`, `TESTONLY`, `DISABLE_INSTALL`, plus `COPTS`, `DEFINES`, `LINKOPTS` as needed.
+
+## Coding Standards (pointers)
+
+- **Trailing return types** are **mandatory** on new functions: `auto foo() -> void;`
+- **Microsoft-oriented** naming: `camelCase` functions, `m_` private members, `PascalCase` types
+- **Exceptions** for errors; use `BASJOO_CHECK_PARAMS` guards where applicable—not status objects
+- See `.cursor/rules/cpp/cpp-coding-standards.mdc` and `.github/instructions/` for detail

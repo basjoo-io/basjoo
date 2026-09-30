@@ -1,0 +1,76 @@
+---
+alwaysApply: true
+description: "Development workflow: implement, test, format, lint, and performance expectations for basjoo."
+---
+# Development Workflow
+
+## 1. Standard Loop
+
+Execute in order for each change set:
+
+1. **Implement** — Correct module under `src/basjoo/` (`common` → `math` → `cvxopm` → `bicycle`). No circular dependencies.
+2. **Test** — Add or update tests under `tests/basjoo/` (doctest for C++; pytest for Python when present).
+3. **Format** — **clang-format** on all touched C/C++ headers and sources; **ruff** (`check` + `format`) on Python.
+4. **Lint** — **clang-tidy** on C++; **ruff** + **pyright** on Python.
+5. **Done** — Only after tests pass and formatting/lint are clean for touched files.
+
+## 2. CMake Build & Test
+
+```bash
+cmake --preset <preset>
+cmake --build --preset <preset>
+ctest --preset <preset>
+```
+
+Filter tests:
+
+```bash
+ctest --preset <preset> -R <regex>
+```
+
+**Presets**: `linux-gcc-x64`, `linux-clang-x64`, `darwin-gcc-arm64`, `darwin-clang-arm64`, `windows-msvc-x64`.
+
+Build trees: typically `out/build/<preset>` per `CMakePresets.json`.
+
+## 3. xmake Build & Test
+
+```bash
+xmake config -m release   # or debug
+xmake build
+# run tests as defined in xmake targets (e.g. xmake run <test_target>)
+```
+
+Use xmake when iterating on xmake-only workflows or validating parity with CMake.
+
+## 4. Python (future / when enabled)
+
+Create the venv with `--system-site-packages` first: the devcontainer's ROS pytest plugins import packages from `/usr/lib/python3/dist-packages`.
+
+```bash
+uv venv --system-site-packages
+uv sync --no-install-project
+uv run pytest
+uv run ruff check .
+uv run ruff format .
+uv run pyright
+```
+
+Add dependencies with **`uv add <package>`** and refresh the lockfile with **`uv lock`**.
+
+## 5. Dependencies
+
+- **C++**: Prefer **CPM**-declared dependencies in CMake; **vcpkg** as configured in-repo.
+- **Python**: **`pyproject.toml`** + **`uv.lock`** — no ad-hoc pip installs in instructions.
+
+## 6. Performance Guidelines
+
+- Prefer **stack** allocation and **`alignas`** for small fixed-size math objects.
+- Use **`std::span`**, **`std::string_view`**, and **PMR** allocators where appropriate for hot paths.
+- Exploit **`constexpr`**, **`if constexpr`**, and **concepts** to move work to compile time.
+- Avoid virtual calls and **`std::function`** in inner loops; prefer templates and lightweight function objects.
+- Use **SIMD** behind `BASJOO_USE_SIMD` when maintained; do not hand-roll BLAS/LAPACK—use the configured backend.
+
+## 7. Documentation Policy
+
+- **Do not** create README files, design docs, or extra markdown unless the user explicitly requests them.
+- Prefer clear names and minimal, accurate comments over external documentation.

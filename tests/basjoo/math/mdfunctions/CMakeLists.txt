@@ -1,0 +1,49 @@
+basjoo_cxx_test(
+  NAME
+    test_math_mdfunction_proxy
+  SRCS
+    "test_mdfunction_proxy.cpp"
+  DEPS
+    math_mdfunction_proxy
+    math_vector
+    math_vectorx
+    math_matrix
+    math_matrixx
+    math_linear_mdfunction
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_linear_mdfunction
+  SRCS
+    "test_linear_mdfunction.cpp"
+  DEPS
+    math_vector
+    math_vectorx
+    math_linear_mdfunction
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_quadratic_mdfunction
+  SRCS
+    "test_quadratic_mdfunction.cpp"
+  DEPS
+    math_vector
+    math_vectorx
+    math_matrix
+    math_matrixx
+    math_quadratic_mdfunction
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_rosenbrock_function
+  SRCS
+    "test_rosenbrock_function.cpp"
+  DEPS
+    math_vec2
+    math_rosenbrock_function
+)

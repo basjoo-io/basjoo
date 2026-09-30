@@ -1,0 +1,43 @@
+basjoo_cxx_library(
+  NAME
+    math_mdfunction_proxy
+  HDRS
+    "mdfunction_proxy.hpp"
+  DEPS
+    msft_proxy4
+    zpp_bits
+    math_matrixx
+    math_linear_mdfunction
+    math_quadratic_mdfunction
+    math_rosenbrock_function
+)
+
+basjoo_cxx_library(
+  NAME
+    math_linear_mdfunction
+  HDRS
+    "linear_mdfunction.hpp"
+  DEPS
+    zpp_bits
+    math_concepts
+)
+
+basjoo_cxx_library(
+  NAME
+    math_quadratic_mdfunction
+  HDRS
+    "quadratic_mdfunction.hpp"
+  DEPS
+    zpp_bits
+    math_concepts
+)
+
+basjoo_cxx_library(
+  NAME
+    math_rosenbrock_function
+  HDRS
+    "rosenbrock_function.hpp"
+  DEPS
+    zpp_bits
+    math_concepts
+)
