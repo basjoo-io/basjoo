@@ -1,0 +1,14 @@
+--- a/source/matplot/util/concepts.h
++++ b/source/matplot/util/concepts.h
+@@ -53,7 +53,10 @@
+     // TypeConcept where C is true only if T is Trivial
+     template <typename T>
+     using Trivial = TypeConcept<
+-        T, std::is_trivial<typename std::remove_reference<T>::type>::value>;
++        T, std::is_trivially_default_constructible<
++               typename std::remove_reference<T>::type>::value &&
++               std::is_trivially_copyable<
++                   typename std::remove_reference<T>::type>::value>;
+ 
+     // TypeConcept where C is true only if T is TriviallyCopyable
+     template <typename T>

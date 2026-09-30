@@ -1,0 +1,59 @@
+basjoo_cxx_library(
+  NAME
+    math_dense_dot_trait
+  HDRS
+    "dense_dot_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_transposed_trait
+  HDRS
+    "dense_transposed_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_norm_trait
+  HDRS
+    "dense_norm_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_generate_trait
+  HDRS
+    "dense_generate_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_degenerate_trait
+  HDRS
+    "dense_degenerate_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_partial_pivot_trait
+  HDRS
+    "dense_partial_pivot_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)

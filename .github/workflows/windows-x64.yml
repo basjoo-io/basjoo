@@ -1,0 +1,121 @@
+name: windows-x64
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+permissions:
+  actions: write
+
+jobs:
+  windows-x64:
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [windows-msvc-x64]
+        build_type: [Debug, Release, RelWithDebInfo, MinSizeRel]
+        build_shared: [OFF]
+        use_blas_lapack: [OpenBLAS]
+        use_boost_unordered: [ON]
+
+    runs-on: windows-2025
+    name: ${{ matrix.toolchain }}.${{ matrix.build_type }}.build-shared-${{ matrix.build_shared }}.boost-unordered-${{ matrix.use_boost_unordered }}.blas-lapack-${{ matrix.use_blas_lapack }}
+
+    steps:
+      - name: Checkout repository
+        id: checkout-repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC
+        id: setup-msvc
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Setup ccache
+        id: setup-ccache
+        uses: Chocobo1/setup-ccache-action@v1
+        with:
+          store_cache: false
+          restore_cache: false
+          remove_stale_cache: true
+          override_cache_key: ccache_${{ matrix.toolchain }}_${{ matrix.build_type }}_build-shared-${{ matrix.build_shared }}_boost-unordered-${{ matrix.use_boost_unordered }}_blas-lapack-${{ matrix.use_blas_lapack }}
+
+      - name: Setup vcpkg
+        id: setup-vcpkg
+        uses: lukka/run-vcpkg@v11
+
+      - name: Setup uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Setup Python virtual environment
+        id: setup-python-venv
+        # Match the documented flow (see README): the venv is always created with
+        # --system-site-packages; harmless here since CI has no ROS.
+        run: |
+          uv venv --system-site-packages
+          uv sync --no-install-project
+        shell: pwsh
+
+      - name: Setup cmake
+        id: setup-cmake
+        uses: lukka/get-cmake@latest
+
+      - name: CMake test
+        id: cmake-test
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.toolchain }}
+          configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}', '-DBUILD_SHARED_LIBS=${{ matrix.build_shared }}', '-DBASJOO_USE_BOOST_UNORDERED=${{ matrix.use_boost_unordered }}', '-DBASJOO_USE_BLAS_LAPACK=${{ matrix.use_blas_lapack }}']"
+          buildPreset: ${{ matrix.toolchain }}
+          buildPresetAdditionalArgs: "[]"
+          testPreset: ${{ matrix.toolchain }}
+          testPresetAdditionalArgs: "[]"
+
+      - name: Setup xmake
+        id: setup-xmake
+        if: false
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: XMake test
+        id: xmake-test
+        if: false
+        shell: pwsh
+        run: |
+          switch ("${{ matrix.build_type }}") {
+            "Debug" { $xmake_mode = "debug" }
+            "Release" { $xmake_mode = "release" }
+            "RelWithDebInfo" { $xmake_mode = "releasedbg" }
+            "MinSizeRel" { $xmake_mode = "minsizerel" }
+          }
+          switch ("${{ matrix.build_shared }}") {
+            "ON" { $xmake_kind = "shared" }
+            "OFF" { $xmake_kind = "static" }
+          }
+          switch ("${{ matrix.use_boost_unordered }}") {
+            "ON" { $xmake_boost_unordered = "y" }
+            "OFF" { $xmake_boost_unordered = "n" }
+          }
+          switch ("${{ matrix.use_blas_lapack }}") {
+            "OpenBLAS" { $xmake_blas_lapack = "openblas" }
+            "Netlib" { $xmake_blas_lapack = "netlib" }
+            "MKL" { $xmake_blas_lapack = "mkl" }
+            "OFF" { $xmake_blas_lapack = "n" }
+          }
+          xmake f -y `
+            --toolchain=${{ matrix.toolchain }} `
+            --mode="$xmake_mode" `
+            --kind="$xmake_kind" `
+            --basjoo_use_boost_unordered="$xmake_boost_unordered" `
+            --basjoo_use_blas_lapack="$xmake_blas_lapack"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          xmake build -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          xmake test -y -v

@@ -1,0 +1,25 @@
+--- a/source/3rd_party/CMakeLists.txt
++++ b/source/3rd_party/CMakeLists.txt
+@@ -93,14 +93,21 @@
+   endif ()
+ endif()
+ 
++find_package(BLAS)
+ find_package(LAPACK)
++if(NOT LAPACK_FOUND AND BLAS_FOUND)
++  # Combined BLAS/LAPACK distributions (e.g. OpenBLAS) provide LAPACK symbols
++  # in the same library, which FindLAPACK does not always detect on its own.
++  set(LAPACK_FOUND ${BLAS_FOUND})
++  set(LAPACK_LIBRARIES ${BLAS_LIBRARIES})
++  set(LAPACK_INCLUDE_DIRS ${BLAS_INCLUDE_DIRS})
++endif()
+ if(LAPACK_FOUND)
+   target_compile_definitions(cimg INTERFACE cimg_use_lapack)
+   target_link_libraries(cimg INTERFACE ${LAPACK_LIBRARIES})
+   target_include_directories(cimg INTERFACE ${LAPACK_INCLUDE_DIRS})
+ endif()
+ 
+-find_package(BLAS)
+ if(BLAS_FOUND)
+   target_compile_definitions(cimg INTERFACE cimg_use_blas)
+   target_link_libraries(cimg INTERFACE ${BLAS_LIBRARIES})

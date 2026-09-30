@@ -1,0 +1,44 @@
+{
+  "buildType": {
+    "default": "release",
+    "description": "Build type",
+    "choices": {
+      "debug": {
+        "short": "Debug",
+        "long": "No optimize, include debug information.",
+        "buildType": "Debug"
+      },
+      "release": {
+        "short": "Release",
+        "long": "Optimize, exclude debug information.",
+        "buildType": "Release"
+      },
+      "minsize": {
+        "short": "MinSizeRel",
+        "long": "Optimize for size, exclude debug information.",
+        "buildType": "MinSizeRel"
+      },
+      "reldeb": {
+        "short": "RelWithDebInfo",
+        "long": "Optimize, include debug information",
+        "buildType": "RelWithDebInfo"
+      }
+    }
+  },
+  "linkage": {
+    "default": "static",
+    "description": "Linkage type",
+    "choices": {
+      "static": {
+        "short": "Static",
+        "long": "Create static libraries",
+        "linkage": "static"
+      },
+      "shared": {
+        "short": "Shared",
+        "long": "Create shared libraries/DLLs",
+        "linkage": "shared"
+      }
+    }
+  }
+}
