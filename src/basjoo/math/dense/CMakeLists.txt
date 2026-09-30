@@ -1,0 +1,205 @@
+add_subdirectory(detail)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_trait
+  HDRS
+    "dense_trait.hpp"
+  DEPS
+    common_aligned_allocator
+    math_concepts
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_lanes
+  HDRS
+    "dense_lanes.hpp"
+  DEPS
+    math_concepts
+    math_dense_norm_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_arithmetic_base
+  HDRS
+    "dense_arithmetic_base.hpp"
+  DEPS
+    math_dense_lanes
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_formatter
+  HDRS
+    "dense_formatter.hpp"
+  DEPS
+    math_complex_formatter
+    math_concepts
+)
+
+basjoo_cxx_library(
+  NAME
+    math_vector_base
+  HDRS
+    "vector_base.hpp"
+  DEPS
+    blas_lapack
+    math_concepts
+    math_dense_arithmetic_base
+    math_dense_lanes
+    math_dense_trait
+    math_dense_dot_trait
+    math_dense_norm_trait
+    math_type_traits
+)
+
+basjoo_cxx_library(
+  NAME
+    math_vector
+  HDRS
+    "vector.hpp"
+  DEPS
+    zpp_bits
+    blas_lapack
+    math_concepts
+    math_dense_trait
+    math_vector_base
+    math_vec2
+    math_vec3
+)
+
+basjoo_cxx_library(
+  NAME
+    math_matrix_base
+  HDRS
+    "matrix_base.hpp"
+  DEPS
+    blas_lapack
+    math_concepts
+    math_dense_arithmetic_base
+    math_dense_lanes
+    math_dense_trait
+    math_dense_dot_trait
+    math_dense_norm_trait
+    math_dense_transposed_trait
+    math_type_traits
+)
+
+basjoo_cxx_library(
+  NAME
+    math_matrix
+  HDRS
+    "matrix.hpp"
+  DEPS
+    zpp_bits
+    blas_lapack
+    math_concepts
+    math_dense_trait
+    math_matrix_base
+    math_mat22
+    math_mat33
+)
+
+basjoo_cxx_library(
+  NAME
+    math_lu_dcmp
+  HDRS
+    "lu_dcmp.hpp"
+  DEPS
+    blas_lapack
+    math_concepts
+    math_dense_partial_pivot_trait
+    math_vector
+    math_matrix
+)
+
+basjoo_cxx_library(
+  NAME
+    math_qr_dcmp
+  HDRS
+    "qr_dcmp.hpp"
+  DEPS
+    blas_lapack
+    math_concepts
+    math_dense_degenerate_trait
+    math_vector
+    math_matrix
+)
+
+basjoo_cxx_library(
+  NAME
+    math_vec2
+  HDRS
+    "vec2.hpp"
+  DEPS
+    math_vector_base
+    zpp_bits
+    math_concepts
+    math_dense_trait
+    math_dense_norm_trait
+    math_type_traits
+)
+
+basjoo_cxx_library(
+  NAME
+    math_vec3
+  HDRS
+    "vec3.hpp"
+  DEPS
+    math_vector_base
+    zpp_bits
+    common_in_in_in_out_result
+    math_concepts
+    math_dense_trait
+    math_dense_norm_trait
+    math_type_traits
+)
+
+basjoo_cxx_library(
+  NAME
+    math_mat22
+  HDRS
+    "mat22.hpp"
+  DEPS
+    math_matrix_base
+    zpp_bits
+    math_concepts
+    math_dense_trait
+    math_dense_norm_trait
+    math_type_traits
+    math_vec2
+)
+
+basjoo_cxx_library(
+  NAME
+    math_mat33
+  HDRS
+    "mat33.hpp"
+  DEPS
+    math_matrix_base
+    zpp_bits
+    math_concepts
+    math_dense_trait
+    math_dense_norm_trait
+    math_type_traits
+    math_vec3
+)
+
+basjoo_cxx_library(
+  NAME
+    math_quaternion
+  HDRS
+    "quaternion.hpp"
+  DEPS
+    math_dense_arithmetic_base
+    math_dense_lanes
+    zpp_bits
+    math_concepts
+    math_dense_trait
+    math_mat33
+    math_vec3
+)

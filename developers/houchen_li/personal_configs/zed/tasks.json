@@ -1,0 +1,162 @@
+[
+  // ============================================================================
+  // CMAKE (preset: linux-gcc-x64)
+  // ============================================================================
+  {
+    "label": "cmake [linux-gcc-x64]: configure",
+    "command": "cmake",
+    "args": [
+      "--preset=linux-gcc-x64"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "cmake [linux-gcc-x64]: build",
+    "command": "cmake",
+    "args": [
+      "--build",
+      "--preset=linux-gcc-x64"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "cmake [linux-gcc-x64]: test",
+    "command": "ctest",
+    "args": [
+      "--preset=linux-gcc-x64"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  // ============================================================================
+  // CMAKE (preset: linux-clang-x64)
+  // ============================================================================
+  {
+    "label": "cmake [linux-clang-x64]: configure",
+    "command": "cmake",
+    "args": [
+      "--preset=linux-clang-x64"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "cmake [linux-clang-x64]: build",
+    "command": "cmake",
+    "args": [
+      "--build",
+      "--preset=linux-clang-x64"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "cmake [linux-clang-x64]: test",
+    "command": "ctest",
+    "args": [
+      "--preset=linux-clang-x64"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  // ============================================================================
+  // XMAKE (toolchain: linux-gcc-x64, mode: release)
+  // ============================================================================
+  {
+    "label": "xmake [linux-gcc-x64]: configure",
+    "command": "xmake",
+    "args": [
+      "config",
+      "--toolchain=linux-gcc-x64",
+      "-mode=release",
+      "-c"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "xmake [linux-gcc-x64]: build",
+    "command": "xmake",
+    "args": [
+      "build"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "xmake [linux-gcc-x64]: test",
+    "command": "xmake",
+    "args": [
+      "test"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  // ============================================================================
+  // XMAKE (toolchain: linux-clang-x64, mode: release)
+  // ============================================================================
+  {
+    "label": "xmake [linux-clang-x64]: configure",
+    "command": "xmake",
+    "args": [
+      "config",
+      "--toolchain=linux-clang-x64",
+      "-mode=release",
+      "-c"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "xmake [linux-clang-x64]: build",
+    "command": "xmake",
+    "args": [
+      "build"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  },
+  {
+    "label": "xmake [linux-clang-x64]: test",
+    "command": "xmake",
+    "args": [
+      "test"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false
+  }
+]

@@ -1,0 +1,20 @@
+CompileFlags:
+  Compiler: clang++
+  Add: []
+  Remove: [-fmodules-ts, -fmodule-mapper=*, -fdeps-format=p1689r5]
+Index:
+  StandardLibrary: Yes
+Diagnostics:
+  ClangTidy:
+    FastCheckFilter: Strict
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
+  Designators: Yes
+  BlockEnd: No
+  TypeNameLimit: 24
+Hover:
+  ShowAKA: Yes

@@ -1,0 +1,23 @@
+{
+  "recommendations": [
+    "ms-vscode.cpptools-extension-pack",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "ms-vscode.cmake-tools",
+    "tboox.xmake-vscode",
+    "jeff-hykin.better-cpp-syntax",
+    "cschlosser.doxdocgen",
+    "rust-lang.rust-analyzer",
+    "ms-python.python",
+    "ms-toolsai.jupyter",
+    "charliermarsh.ruff",
+    "astral-sh.ty",
+    "njpwerner.autodocstring",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml",
+    "james-yu.latex-workshop",
+    "shd101wyy.markdown-preview-enhanced",
+    "esbenp.prettier-vscode",
+    "streetsidesoftware.code-spell-checker",
+    "aaron-bond.better-comments"
+  ]
+}

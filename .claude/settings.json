@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(cmake:*)",
+      "Bash(cmake --preset:*)",
+      "Bash(cmake --build:*)",
+      "Bash(ctest:*)",
+      "Bash(ctest --preset:*)",
+      "Bash(xmake:*)",
+      "Bash(ninja:*)",
+      "Bash(make:*)",
+      "Bash(uv:*)",
+      "Bash(ruff:*)",
+      "Bash(pyright:*)",
+      "Bash(clang-format:*)",
+      "Bash(clang-tidy:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git blame:*)",
+      "Bash(git stash:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git remote:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(which:*)",
+      "Bash(mkdir:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path','') or d.get('tool_response',{}).get('filePath',''))\") && case \"$f\" in *.c|*.cc|*.cpp|*.cxx|*.h|*.hh|*.hpp|*.hxx|*.ixx|*.cppm|*.tpp) clang-format -i \"$f\" ;; *.py|*.pyi|*.pyx) ruff check --fix --quiet \"$f\" && ruff format --quiet \"$f\" ;; esac",
+            "timeout": 30,
+            "statusMessage": "Auto-formatting..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before compacting, ensure the summary preserves: 1) The current build preset being used (linux-gcc-x64, linux-clang-x64, etc.) 2) Any specific test names or CMake targets being worked on 3) Any compilation errors or warnings being debugged 4) The module context (common, math, cvxopm, bicycle) 5) Any file paths and line numbers relevant to the current task"
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {
+    "symlinkDirectories": ["third_party", "build", "out", "vcpkg", ".venv", ".cache"]
+  },
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true
+  }
+}

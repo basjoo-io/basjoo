@@ -1,0 +1,142 @@
+{
+  "version": 9,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 31,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "_debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BASJOO_CHECK_PARAMS": true
+      }
+    },
+    {
+      "name": "linux-gcc-x64-debug",
+      "displayName": "Linux GCC x86_64-pc-linux-gnu Debug",
+      "description": "Using compilers: C = gcc, CXX = g++",
+      "inherits": ["_debug", "linux-gcc-x64"],
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": true
+      }
+    },
+    {
+      "name": "linux-clang-x64-debug",
+      "displayName": "Linux Clang x86_64-pc-linux-gnu Debug",
+      "description": "Using compilers: C = clang, CXX = clang++",
+      "inherits": ["_debug", "linux-clang-x64"],
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": true
+      }
+    },
+    {
+      "name": "darwin-gcc-arm64-debug",
+      "displayName": "Darwin GCC aarch64-apple-darwin Debug",
+      "description": "Using compilers: C = gcc, CXX = g++",
+      "inherits": ["_debug", "darwin-gcc-arm64"],
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": true
+      }
+    },
+    {
+      "name": "darwin-clang-arm64-debug",
+      "displayName": "Darwin Clang aarch64-apple-darwin Debug",
+      "description": "Using compilers: C = clang, CXX = clang++",
+      "inherits": ["_debug", "darwin-clang-arm64"],
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": true
+      }
+    },
+    {
+      "name": "windows-msvc-x64-debug",
+      "displayName": "Windows MSVC x86_64 Debug",
+      "description": "Using compilers: C = cl.exe, CXX = cl.exe",
+      "inherits": ["_debug", "windows-msvc-x64"]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "_default-debug",
+      "hidden": true,
+      "inheritConfigureEnvironment": true,
+      "targets": "all",
+      "jobs": 0
+    },
+    {
+      "name": "linux-gcc-x64-debug",
+      "displayName": "Linux GCC x86_64-pc-linux-gnu Debug",
+      "configurePreset": "linux-gcc-x64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "linux-clang-x64-debug",
+      "displayName": "Linux Clang x86_64-pc-linux-gnu Debug",
+      "configurePreset": "linux-clang-x64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "darwin-gcc-arm64-debug",
+      "displayName": "Darwin GCC aarch64-apple-darwin Debug",
+      "configurePreset": "darwin-gcc-arm64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "darwin-clang-arm64-debug",
+      "displayName": "Darwin Clang aarch64-apple-darwin Debug",
+      "configurePreset": "darwin-clang-arm64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "windows-msvc-x64-debug",
+      "displayName": "Windows MSVC x86_64 Debug",
+      "configurePreset": "windows-msvc-x64-debug",
+      "inherits": "_default-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "_default-debug",
+      "hidden": true,
+      "inheritConfigureEnvironment": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 0
+      }
+    },
+    {
+      "name": "linux-gcc-x64-debug",
+      "displayName": "Linux GCC x86_64-pc-linux-gnu Debug",
+      "configurePreset": "linux-gcc-x64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "linux-clang-x64-debug",
+      "displayName": "Linux Clang x86_64-pc-linux-gnu Debug",
+      "configurePreset": "linux-clang-x64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "darwin-gcc-arm64-debug",
+      "displayName": "Darwin GCC aarch64-apple-darwin Debug",
+      "configurePreset": "darwin-gcc-arm64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "darwin-clang-arm64-debug",
+      "displayName": "Darwin Clang aarch64-apple-darwin Debug",
+      "configurePreset": "darwin-clang-arm64-debug",
+      "inherits": "_default-debug"
+    },
+    {
+      "name": "windows-msvc-x64-debug",
+      "displayName": "Windows MSVC x86_64 Debug",
+      "configurePreset": "windows-msvc-x64-debug",
+      "inherits": "_default-debug"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+---
+BasedOnStyle: Microsoft
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 100
+---
+Language: Cpp
+Standard: Latest
+PointerAlignment: Left
+DerivePointerAlignment: false
+AllowShortFunctionsOnASingleLine: All
+AlignAfterOpenBracket: BlockIndent
+AlignEscapedNewlines: Left
+BreakBeforeBraces: Attach
+BreakAfterAttributes: Leave
+BreakTemplateDeclarations: Yes
+AlwaysBreakBeforeMultilineStrings: true
+SortIncludes: CaseInsensitive
+InsertNewlineAtEOF: true
+---
