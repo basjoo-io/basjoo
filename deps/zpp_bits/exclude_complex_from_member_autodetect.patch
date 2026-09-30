@@ -1,0 +1,34 @@
+--- a/zpp_bits.h
++++ b/zpp_bits.h
+@@ -982,10 +982,31 @@
+         Type{}.data();
+     });
+ 
++#if defined(__clang__)
++// Clang reports `__cpp_structured_bindings >= 202411L` (the C++26 structured-binding-pack
++// feature) even under `-std=c++23`. When that is true, zpp_bits' generic member-count
++// auto-detection below falls back to `auto&& [...members] = object`, applied directly to
++// `std::complex<T>`. `std::complex::real`/`imag` are private in both libc++ and libstdc++,
++// so this hard-errors. zpp_bits ships its own ADL-based `serialize()` overloads for
++// `std::complex` (see the "Support for std::complex tuple protocol" block above), but its
++// generic detection probe (`access::has_explicit_serialize`, using the `traits::visitor`
++// dummy archive) can never find them: `traits::visitor` lives in `zpp::bits::traits`, while
++// those overloads live in `zpp::bits`, so ADL does not connect the two. Excluding
++// `std::complex` from the auto-detection path here sidesteps the crash; the real
++// (de)serialization still goes through zpp_bits' own `std::complex` overloads unaffected.
++template <typename Type>
++struct is_complex : std::false_type {};
++template <typename Type>
++struct is_complex<std::complex<Type>> : std::true_type {};
++#endif
++
+ template <typename Type>
+ concept inspection_guarded =
+     (container<Type> && !array<Type>) || owning_pointer<Type> ||
+     variant<Type> || optional<Type> || bitset<Type> ||
++#if defined(__clang__)
++    is_complex<std::remove_cvref_t<Type>>::value ||
++#endif
+     has_explicit_serialize<Type>;
+ 
+ } // namespace concepts

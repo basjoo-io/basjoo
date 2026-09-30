@@ -1,0 +1,72 @@
+basjoo_cxx_test(
+  NAME
+    test_math_vector
+  SRCS
+    "test_vector.cpp"
+  DEPS
+    math_dense_formatter
+    math_type_traits
+    math_matrix
+    math_vector
+    math_vector
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_vec2
+  SRCS
+    "test_vec2.cpp"
+  DEPS
+    math_dense_formatter
+    math_vec2
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_vec3
+  SRCS
+    "test_vec3.cpp"
+  DEPS
+    math_dense_formatter
+    math_vec3
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_matrix
+  SRCS
+    "test_matrix.cpp"
+  DEPS
+    math_dense_formatter
+    math_type_traits
+    math_matrix
+    math_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_lu_dcmp
+  SRCS
+    "test_lu_dcmp.cpp"
+  DEPS
+    math_type_traits
+    math_lu_dcmp
+    math_vector
+    math_vector
+    math_matrix
+    math_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_qr_dcmp
+  SRCS
+    "test_qr_dcmp.cpp"
+  DEPS
+    math_type_traits
+    math_qr_dcmp
+    math_vector
+    math_vector
+    math_matrix
+    math_matrix
+)

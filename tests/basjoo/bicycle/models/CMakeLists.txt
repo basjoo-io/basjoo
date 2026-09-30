@@ -1,0 +1,19 @@
+basjoo_cxx_test(
+  NAME
+    test_bicycle_kinematics_model
+  SRCS
+    "test_kinematics_model.cpp"
+  DEPS
+    bicycle_kinematics_model
+    math_integrate_mode
+    math_vec2
+)
+
+basjoo_cxx_test(
+  NAME
+    test_bicycle_dynamics_model
+  SRCS
+    "test_dynamics_model.cpp"
+  DEPS
+    bicycle_dynamics_model
+)

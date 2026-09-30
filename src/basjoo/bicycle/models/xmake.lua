@@ -1,0 +1,13 @@
+target("bicycle_kinematics_model")
+    set_kind("headeronly")
+    add_includedirs("../../..")
+    add_headerfiles("kinematics_model.hpp")
+    add_packages("zpp_bits", {public = true})
+    add_deps("math_dense_arithmetic_base", "math_integrate_mode")
+target_end()
+
+target("bicycle_dynamics_model")
+    set_kind("headeronly")
+    add_includedirs("../../..")
+    add_headerfiles("dynamics_model.hpp")
+target_end()
