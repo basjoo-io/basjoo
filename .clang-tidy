@@ -1,0 +1,392 @@
+---
+# basjoo Library clang-tidy configuration for C++23 high-performance math library
+# Enforces strict code quality, modern C++ practices, and performance best practices
+# Requires clang-tidy 20+ with modern C++20/23 checks
+
+Checks: |-
+  # ==========================================================================
+  # Core diagnostics and static analysis
+  # ==========================================================================
+  clang-diagnostic-*,
+  clang-analyzer-*,
+
+  # ==========================================================================
+  # Bug detection (critical for code correctness)
+  # ==========================================================================
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-unchecked-optional-access,
+
+  # ==========================================================================
+  # Certification and security (CERT C++ Coding Standard)
+  # ==========================================================================
+  cert-*,
+
+    # ==========================================================================
+    # High Integrity C++ (HICPP) checks
+    # ==========================================================================
+    hicpp-*,
+    -hicpp-signed-bitwise,
+    -hicpp-explicit-conversions,
+
+    # ==========================================================================
+    # Miscellaneous checks
+    # ==========================================================================
+    misc-*,
+    -misc-no-recursion,
+    -misc-include-cleaner,
+    -misc-use-anonymous-namespace,
+    -misc-use-internal-linkage,
+
+  # ==========================================================================
+  # Modern C++ best practices (C++11 to C++23)
+  # ==========================================================================
+  modernize-*,
+  -modernize-use-nodiscard,
+
+  # ==========================================================================
+  # Performance critical for math library
+  # ==========================================================================
+  performance-*,
+
+  # ==========================================================================
+  # Readability and maintainability
+  # ==========================================================================
+  readability-*,
+  -readability-magic-numbers,
+  -readability-math-missing-parentheses,
+  -readability-identifier-length,
+  -readability-isolate-declaration,
+  -readability-redundant-control-flow,
+  -readability-redundant-inline-specifier,
+  -readability-avoid-nested-conditional-operator,
+
+    # ==========================================================================
+    # C++ Core Guidelines
+    # ==========================================================================
+    cppcoreguidelines-*,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -cppcoreguidelines-avoid-magic-numbers,
+    -cppcoreguidelines-avoid-do-while,
+    -cppcoreguidelines-avoid-const-or-ref-data-members,
+    -cppcoreguidelines-rvalue-reference-param-not-moved,
+
+  # ==========================================================================
+  # Concurrency safety
+  # ==========================================================================
+  concurrency-*,
+
+  # ==========================================================================
+  # Portability
+  # ==========================================================================
+  portability-*,
+  -portability-avoid-pragma-once,
+
+  # ==========================================================================
+  # LLVM style (subset)
+  # ==========================================================================
+  llvm-namespace-comment,
+  llvm-include-order,
+
+  # ==========================================================================
+  # Boost library modernization
+  # ==========================================================================
+  boost-*,
+
+    # ==========================================================================
+    # Google style (subset of useful checks)
+    # ==========================================================================
+    google-build-explicit-make-pair,
+    google-build-using-namespace,
+    google-runtime-operator,
+
+WarningsAsErrors: ""
+
+FormatStyle: file
+
+HeaderFilterRegex: 'basjoo/.*\.hpp'
+
+CheckOptions:
+  # ==========================================================================
+  # Bugprone configuration
+  # ==========================================================================
+  - key: bugprone-argument-comment.StrictMode
+    value: "true"
+  - key: bugprone-argument-comment.CommentBoolLiterals
+    value: "true"
+  - key: bugprone-assert-side-effect.AssertMacros
+    value: "assert,ASSERT,VERIFY,BOOST_ASSERT"
+  - key: bugprone-dangling-handle.HandleClasses
+    value: "std::basic_string_view;std::span"
+  - key: bugprone-exception-escape.FunctionsThatShouldNotThrow
+    value: ""
+  - key: bugprone-misplaced-widening-cast.CheckImplicitCasts
+    value: "true"
+  - key: bugprone-narrowing-conversions.PedanticMode
+    value: "true"
+  - key: bugprone-narrowing-conversions.WarnOnFloatingPointNarrowingConversion
+    value: "true"
+  - key: bugprone-sizeof-expression.WarnOnSizeOfIntegerExpression
+    value: "true"
+  - key: bugprone-sizeof-expression.WarnOnSizeOfCompareToConstant
+    value: "true"
+  - key: bugprone-string-constructor.WarnOnLargeLength
+    value: "true"
+  - key: bugprone-string-constructor.LargeLengthThreshold
+    value: "8388608"
+  - key: bugprone-suspicious-string-compare.WarnOnImplicitComparison
+    value: "true"
+  - key: bugprone-suspicious-string-compare.WarnOnLogicalNotComparison
+    value: "true"
+  - key: bugprone-too-small-loop-variable.MagnitudeBitsUpperLimit
+    value: "16"
+  - key: bugprone-unused-return-value.CheckedFunctions
+    value: "::std::async;::std::launder;::std::remove;::std::remove_if;::std::unique;::std::unique_ptr::release;::std::basic_string::empty;::std::vector::empty;::std::back_inserter;::std::distance;::std::find;::std::find_if;::std::inserter;::std::lower_bound;::std::make_pair;::std::map::count;::std::map::find;::std::map::lower_bound;::std::multimap::equal_range;::std::multimap::upper_bound;::std::set::count;::std::set::find;::std::setfill;::std::setprecision;::std::setw;::std::upper_bound;::std::vector::at;::std::make_shared;::std::make_unique"
+
+  # ==========================================================================
+  # CERT configuration
+  # ==========================================================================
+  - key: cert-dcl16-c.NewSuffixes
+    value: "L;LL;LU;LLU"
+  - key: cert-oop54-cpp.WarnOnlyIfThisHasSuspiciousField
+    value: "false"
+
+  # ==========================================================================
+  # Miscellaneous configuration
+  # ==========================================================================
+  - key: misc-const-correctness.AnalyzeValues
+    value: "true"
+  - key: misc-const-correctness.AnalyzeReferences
+    value: "true"
+  - key: misc-const-correctness.WarnPointersAsValues
+    value: "false"
+  - key: misc-const-correctness.TransformValues
+    value: "true"
+  - key: misc-const-correctness.TransformReferences
+    value: "true"
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: "true"
+  - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
+    value: "false"
+  - key: misc-throw-by-value-catch-by-reference.MaxSize
+    value: "64"
+  - key: misc-throw-by-value-catch-by-reference.WarnOnLargeObjects
+    value: "true"
+  - key: misc-uniqueptr-reset-release.IncludeStyle
+    value: "llvm"
+
+  # ==========================================================================
+  # Modernize configuration (C++11 to C++23 features)
+  # ==========================================================================
+  - key: modernize-loop-convert.MaxCopySize
+    value: "16"
+  - key: modernize-loop-convert.MinConfidence
+    value: "reasonable"
+  - key: modernize-loop-convert.NamingStyle
+    value: "CamelCase"
+  - key: modernize-loop-convert.UseCxx20ReverseRanges
+    value: "true"
+  - key: modernize-make-shared.MakeSmartPtrFunction
+    value: "std::make_shared"
+  - key: modernize-make-shared.MakeSmartPtrFunctionHeader
+    value: "<memory>"
+  - key: modernize-make-unique.MakeSmartPtrFunction
+    value: "std::make_unique"
+  - key: modernize-make-unique.MakeSmartPtrFunctionHeader
+    value: "<memory>"
+  - key: modernize-pass-by-value.IncludeStyle
+    value: "llvm"
+  - key: modernize-pass-by-value.ValuesOnly
+    value: "false"
+  - key: modernize-replace-auto-ptr.IncludeStyle
+    value: "llvm"
+  - key: modernize-use-auto.MinTypeNameLength
+    value: "5"
+  - key: modernize-use-auto.RemoveStars
+    value: "false"
+  - key: modernize-use-default-member-init.UseAssignment
+    value: "false"
+  - key: modernize-use-emplace.ContainersWithPushBack
+    value: "::std::vector;::std::list;::std::deque"
+  - key: modernize-use-emplace.SmartPointers
+    value: "::std::shared_ptr;::std::unique_ptr;::std::auto_ptr;::std::weak_ptr"
+  - key: modernize-use-equals-default.IgnoreMacros
+    value: "true"
+  - key: modernize-use-nullptr.NullMacros
+    value: "NULL"
+  - key: modernize-use-override.AllowOverrideAndFinal
+    value: "false"
+  - key: modernize-use-override.IgnoreDestructors
+    value: "true"
+  - key: modernize-use-override.IgnoreTemplateInstantiations
+    value: "false"
+  - key: modernize-use-transparent-functors.SafeMode
+    value: "false"
+  - key: modernize-use-using.IgnoreMacros
+    value: "true"
+  # C++20/23 specific modernizations
+  - key: modernize-use-starts-ends-with.ReplacementString
+    value: "starts_with"
+  - key: modernize-use-std-numbers.IncludeStyle
+    value: "llvm"
+
+  # ==========================================================================
+  # Performance configuration
+  # ==========================================================================
+  - key: performance-for-range-copy.AllowedTypes
+    value: ""
+  - key: performance-for-range-copy.WarnOnAllAutoCopies
+    value: "true"
+  - key: performance-inefficient-string-concatenation.StrictMode
+    value: "true"
+  - key: performance-inefficient-vector-operation.EnableProto
+    value: "false"
+  - key: performance-inefficient-vector-operation.VectorLikeClasses
+    value: "::std::vector"
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: "true"
+  - key: performance-move-const-arg.CheckMoveToConstRef
+    value: "true"
+  - key: performance-move-constructor-init.IncludeStyle
+    value: "llvm"
+  - key: performance-no-automatic-move.AllowedTypes
+    value: ""
+  - key: performance-type-promotion-in-math-fn.IncludeStyle
+    value: "llvm"
+  - key: performance-unnecessary-copy-initialization.AllowedTypes
+    value: ""
+  - key: performance-unnecessary-copy-initialization.ExcludedContainerTypes
+    value: ""
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: ""
+  - key: performance-unnecessary-value-param.IncludeStyle
+    value: "llvm"
+
+  # ==========================================================================
+  # Readability configuration
+  # ==========================================================================
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: "1"
+  - key: readability-function-cognitive-complexity.DescribeBasicIncrements
+    value: "true"
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: "true"
+  - key: readability-function-cognitive-complexity.Threshold
+    value: "50"
+  - key: readability-function-size.BranchThreshold
+    value: "50"
+  - key: readability-function-size.LineThreshold
+    value: "300"
+  - key: readability-function-size.NestingThreshold
+    value: "6"
+  - key: readability-function-size.ParameterThreshold
+    value: "8"
+  - key: readability-function-size.StatementThreshold
+    value: "800"
+  - key: readability-function-size.VariableThreshold
+    value: "50"
+  - key: readability-identifier-naming.IgnoreFailedSplit
+    value: "false"
+  - key: readability-implicit-bool-conversion.AllowIntegerConditions
+    value: "false"
+  - key: readability-implicit-bool-conversion.AllowPointerConditions
+    value: "true"
+  - key: readability-inconsistent-declaration-parameter-name.IgnoreMacros
+    value: "true"
+  - key: readability-inconsistent-declaration-parameter-name.Strict
+    value: "true"
+  - key: readability-qualified-auto.AddConstToQualified
+    value: "true"
+  - key: readability-redundant-access-specifiers.CheckFirstDeclaration
+    value: "false"
+  - key: readability-redundant-declaration.IgnoreMacros
+    value: "true"
+  - key: readability-redundant-member-init.IgnoreBaseInCopyConstructors
+    value: "false"
+  - key: readability-simplify-boolean-expr.ChainedConditionalAssignment
+    value: "true"
+  - key: readability-simplify-boolean-expr.ChainedConditionalReturn
+    value: "true"
+  - key: readability-simplify-subscript-expr.Types
+    value: "::std::basic_string;::std::basic_string_view;::std::vector;::std::array;::std::span"
+  - key: readability-uppercase-literal-suffix.IgnoreMacros
+    value: "true"
+  - key: readability-uppercase-literal-suffix.NewSuffixes
+    value: "L;LL;LU;LLU;UL;ULL;F"
+
+  # ==========================================================================
+  # C++ Core Guidelines configuration
+  # ==========================================================================
+  - key: cppcoreguidelines-init-variables.IncludeStyle
+    value: "llvm"
+  - key: cppcoreguidelines-init-variables.MathHeader
+    value: "<cmath>"
+  - key: cppcoreguidelines-macro-usage.AllowedRegexp
+    value: "^(BASJOO_|DEBUG_|NDEBUG).*"
+  - key: cppcoreguidelines-macro-usage.CheckCapsOnly
+    value: "false"
+  - key: cppcoreguidelines-macro-usage.IgnoreCommandLineMacros
+    value: "true"
+  - key: cppcoreguidelines-no-malloc.Allocations
+    value: "::malloc;::calloc"
+  - key: cppcoreguidelines-no-malloc.Deallocations
+    value: "::free"
+  - key: cppcoreguidelines-no-malloc.Reallocations
+    value: "::realloc"
+  - key: cppcoreguidelines-owning-memory.LegacyResourceConsumers
+    value: "::free;::realloc;::freopen;::fclose"
+  - key: cppcoreguidelines-owning-memory.LegacyResourceProducers
+    value: "::malloc;::aligned_alloc;::realloc;::calloc;::fopen;::freopen;::tmpfile"
+  - key: cppcoreguidelines-prefer-member-initializer.UseAssignment
+    value: "false"
+  - key: cppcoreguidelines-pro-bounds-constant-array-index.GslHeader
+    value: ""
+  - key: cppcoreguidelines-pro-bounds-constant-array-index.IncludeStyle
+    value: "llvm"
+  - key: cppcoreguidelines-pro-type-member-init.IgnoreArrays
+    value: "false"
+  - key: cppcoreguidelines-pro-type-member-init.UseAssignment
+    value: "false"
+  - key: cppcoreguidelines-rvalue-reference-param-not-moved.AllowPartialMove
+    value: "false"
+  - key: cppcoreguidelines-rvalue-reference-param-not-moved.IgnoreUnnamedParams
+    value: "true"
+  - key: cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
+    value: "false"
+  - key: cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted
+    value: "true"
+  - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value: "true"
+
+  # ==========================================================================
+  # LLVM configuration
+  # ==========================================================================
+  - key: llvm-namespace-comment.ShortNamespaceLines
+    value: "10"
+  - key: llvm-namespace-comment.SpacesBeforeComments
+    value: "1"
+
+  # ==========================================================================
+  # Concurrency configuration
+  # ==========================================================================
+  - key: concurrency-mt-unsafe.FunctionSet
+    value: "posix"
+
+  # ==========================================================================
+  # HICPP configuration
+  # ==========================================================================
+  - key: hicpp-multiway-paths-covered.WarnOnMissingElse
+    value: "true"
+
+  # ==========================================================================
+  # Google style configuration
+  # ==========================================================================
+  - key: google-explicit-constructor.AddExplicit
+    value: "true"
+
+  # ==========================================================================
+  # Boost configuration
+  # ==========================================================================
+  - key: boost-use-ranges.UseReversePipe
+    value: "true"
+...

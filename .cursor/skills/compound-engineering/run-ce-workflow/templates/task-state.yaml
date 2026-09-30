@@ -1,0 +1,153 @@
+# Task State File Template
+# Copy this file as docs/tasks/<task-id>.yaml when starting a new task.
+# task_id must match the filename (kebab-case).
+task_id: <task-id>
+created: YYYY-MM-DD
+status: brainstorm
+paths:
+  design:
+  plan:
+  implementation:
+sessions: []
+# Session history format:
+# - started: 2026-04-07T10:00
+#   stages_covered: [brainstorm]
+#   decisions: ["chose approach B over A"]
+
+stages:
+  brainstorm:
+    research_agents: []
+    gate_a:
+      policy: manual # manual | auto_if_pass | auto
+      status: pending
+      date:
+      reason:
+      artifacts:
+        design_doc_exists: false
+        document_review_passed: false
+  arch_plan:
+    research_agents: []
+    document_review_passed: false
+  arch_audit:
+    iteration: 0
+    max_iterations: 2
+    audit_triage_policy: manual # manual | auto_safe | auto_all
+    status: pending
+    findings_total: 0
+    findings_p1: 0
+    findings: []
+    # Finding format:
+    # - id: 1
+    #   agent: architecture-strategist
+    #   priority: p1
+    #   title: brief description
+    #   disposition: reported | approved | fixed | wontfix
+    #   iteration_found: 1
+    #   iteration_fixed:
+    review_agents: [architecture-strategist, performance-oracle, code-simplicity-reviewer, pattern-recognition-specialist]
+    last_audit_run:
+    gate_b:
+      policy: manual # manual | auto_if_pass | auto
+      status: pending
+      date:
+      reason:
+      artifacts:
+        audit_passed: false
+        p1_findings_zero: false
+        plan_doc_exists: false
+  impl_plan:
+    research_agents: []
+    document_review_passed: false
+  impl_audit:
+    iteration: 0
+    max_iterations: 2
+    audit_triage_policy: manual # manual | auto_safe | auto_all
+    status: pending
+    findings_total: 0
+    findings_p1: 0
+    findings: []
+    review_agents: [spec-flow-analyzer, security-sentinel, performance-oracle, agent-native-reviewer]
+    conditional_agents: []
+    last_audit_run:
+    gate_c:
+      policy: manual # manual | auto_if_pass | auto
+      status: pending
+      date:
+      reason:
+      artifacts:
+        audit_passed: false
+        p1_findings_zero: false
+        implementation_doc_exists: false
+        agent_native_review_passed: false
+  tdd:
+    branch: # feature branch name (set during Branch Setup before Stage 6)
+    worktree_path: # worktree path if used (set during Branch Setup)
+    test_count: 0
+    test_files: []
+    all_tests_red: false
+    gate_d:
+      policy: manual # manual | auto_if_pass | auto
+      status: pending
+      date:
+      reason:
+      artifacts:
+        test_count_nonzero: false
+        tests_compile: false
+        tests_fail_as_expected: false
+  execute:
+    checkpoint_current: 0
+    checkpoint_total: 0
+    checkpoint_policy: manual
+    all_checkpoints_done: false
+    all_tests_green: false
+    blockers: []
+  code_audit:
+    iteration: 0
+    max_iterations: 2
+    audit_triage_policy: manual # manual | auto_safe | auto_all
+    status: pending
+    drift_points: 0
+    findings_total: 0
+    findings_p1: 0
+    findings: []
+    review_agents: [architecture-strategist, code-simplicity-reviewer, correctness-reviewer, testing-reviewer, pattern-recognition-specialist, performance-oracle, security-sentinel]
+    conditional_agents: [design-implementation-reviewer]
+    last_audit_run:
+    gate_e:
+      policy: manual # manual | auto_if_pass | auto
+      status: pending
+      date:
+      reason:
+      artifacts:
+        audit_passed: false
+        p1_findings_zero: false
+        drift_points_zero: false
+        all_tests_green: false
+        detect_changes_clean: false
+  ship:
+    pr: # PR URL or "skipped"
+    ci: # passed | failed | null
+    review: # approved | changes_requested | null
+    skip_reason: # why PR was skipped (if skipped)
+  verify:
+    verification_method: # simulation | integration_test | manual_test
+    scenarios: [] # list of scenario names or test targets
+    evidence: []
+    # Evidence format:
+    # - type: simulation | test_output | manual_check
+    #   description: what was verified
+    #   result: pass | fail
+    #   artifact: path or URL to evidence
+    gate_f:
+      policy: manual # manual | auto_if_pass | auto
+      status: pending
+      date:
+      reason:
+      artifacts:
+        verification_method_set: false
+        evidence_collected: false
+        all_evidence_passing: false
+  compound:
+    retro_written: false
+    solutions: []
+    knowledge_synced: false

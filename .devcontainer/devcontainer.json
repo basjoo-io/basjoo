@@ -1,0 +1,71 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+  "name": "basjoo",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": ".",
+    "args": {
+      "BASE_IMAGE": "ubuntu:latest",
+      "GCC_VERSION_MAJOR": "16",
+      "CLANG_VERSION_MAJOR": "22",
+      "CMAKE_VERSION": "4.4.3",
+      "XMAKE_VERSION": "3.1.1",
+      "ROS_DISTRO": "lyrical"
+    }
+  },
+  "image": "ghcr.io/basjoo-io/basjoo:gcc-16_clang-22_ros-lyrical_20261001",
+  // Features to add to the dev container. More info: https://containers.dev/features.
+  // "features": {},
+  // Use 'runArgs' to send arguments to 'docker run'.
+  "runArgs": [
+    "--tmpfs",
+    "/tmp:rw,exec,nosuid,nodev,mode=1777",
+    "--tmpfs",
+    "/run:rw,exec,nosuid,nodev,mode=1777"
+  ],
+  // Uncomment to connect as devcontainer instead. More info: https://aka.ms/dev-containers-non-root.
+  "containerUser": "devcontainer",
+  // "remoteUser": "devcontainer",
+  // Use 'containerEnv' to set environment variables in the container.
+  "containerEnv": {
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}"
+  },
+  // "remoteEnv": {},
+  // Use 'mounts' to mount volumes into the container.
+  "mounts": [
+    "type=bind,source=/tmp/.X11-unix,destination=/tmp/.X11-unix,consistency=consistent",
+    "type=bind,source=${localEnv:XDG_RUNTIME_DIR},destination=/run/user/1000,consistency=consistent"
+  ],
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  // "forwardPorts": [],
+  // Use 'postCreateCommand' to run commands after the container is created.
+  // "postCreateCommand": "",
+  // Configure tool-specific properties.
+  "customizations": {
+    // Configure properties specific to VS Code.
+    "vscode": {
+      // Set *default* container specific settings.json values on container create.
+      // "settings": {},
+      // Add the IDs of extensions you want installed when the container is created.
+      "extensions": [
+        "ms-vscode.cpptools-extension-pack",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "tboox.xmake-vscode",
+        "jeff-hykin.better-cpp-syntax",
+        "cschlosser.doxdocgen",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "astral-sh.ty",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "aaron-bond.better-comments",
+        "esbenp.prettier-vscode",
+        "ibm.output-colorizer",
+        "eamodio.gitlens"
+      ]
+    }
+  }
+}

@@ -1,0 +1,170 @@
+---
+globs: *.mdc
+description: "Coding standards for writing Cursor Rules (.mdc files) in the basjoo project."
+---
+# Cursor Rules Coding Standards
+
+## 1. Overview
+
+Cursor Rules (`.mdc` files) define AI assistant behavior and coding standards for the project. This document specifies how to write and organize these rules.
+
+## 2. File Organization
+
+### 2.1 Directory Structure
+
+```
+.cursor/rules/
+├── basic/           # General rules (alwaysApply: true)
+├── cmake/           # CMake build system rules
+├── cpp/             # C++ language rules
+├── python/          # Python language rules
+└── cursor_rules/    # Rules for writing rules
+```
+
+### 2.2 File Naming
+
+- Use `lower-case-with-hyphens.mdc` format
+- Use descriptive names that indicate the rule's purpose
+  - ✅ `<language>-coding-standards.mdc`
+  - ✅ `<language>-testing-guidelines.mdc`
+  - ❌ `CodingStandards.mdc`
+  - ❌ `rules.mdc` (too generic)
+
+## 3. Frontmatter Configuration
+
+Every `.mdc` file must start with a YAML frontmatter block:
+
+```yaml
+---
+globs: *.py                        # File patterns this rule applies to
+description: "Brief description"   # One-line description of the rule
+---
+```
+
+### 3.1 Application Modes
+
+| Mode | Frontmatter | Use Case |
+|------|-------------|----------|
+| Always Apply | `alwaysApply: true` | General rules that apply to all code |
+| Specific Files | `globs: *.ext` | Language-specific rules |
+| Manual | Neither | Reference documentation |
+
+### 3.2 Globs Patterns
+
+- Use specific patterns to target files accurately
+- **IMPORTANT**: Multiple patterns must be comma-separated **without spaces**
+
+```yaml
+# Single pattern
+globs: *.py
+
+# Multiple patterns (NO spaces after commas!)
+globs: *.cc,*.h,*.cpp,*.hpp
+
+# Test files
+globs: *_test.py,*test_*.py,conftest.py
+
+# Build files
+globs: CMakeLists.txt,*.cmake
+```
+
+## 4. Content Structure
+
+### 4.1 Document Layout
+
+```markdown
+# Rule Title
+
+## 1. Overview / Principles
+Brief introduction and guiding principles.
+
+## 2. Main Sections
+Detailed rules organized by topic.
+
+### 2.1 Subsection
+Specific rules with examples.
+
+## N. Examples
+Code examples demonstrating correct usage.
+```
+
+### 4.2 Writing Style
+
+- **Language**: Write all rules in **English**
+- **Tone**: Use clear, direct, and imperative language
+- **Format**: Use bullet points for lists, tables for comparisons
+- **Examples**: Always include ✅ (correct) and ❌ (incorrect) examples
+
+### 4.3 Rule Emphasis
+
+Use these markers for rule importance:
+
+- `**REQUIRED**`: Must follow, no exceptions
+- `**MANDATORY**`: Must follow, no exceptions (alternative)
+- `**Recommended**`: Best practice, follow unless there's good reason not to
+- `**Optional**`: Nice to have, use when appropriate
+
+## 5. Code Examples
+
+### 5.1 Code Blocks
+
+Always specify the language for syntax highlighting:
+
+````markdown
+```python
+def example():
+    pass
+```
+
+```cpp
+void Example() {}
+```
+````
+
+### 5.2 Good/Bad Examples
+
+```markdown
+### Good Example
+✅ Recommended approach:
+```python
+def get_user_by_id(user_id: str) -> User:
+    ...
+```
+
+### Bad Example
+❌ Avoid this:
+```python
+def get(id):
+    ...
+```
+```
+
+## 6. Cross-References
+
+### 6.1 Linking to Other Files
+
+Use MDC link format to reference other files:
+
+```markdown
+See [cmake/utils.cmake](mdc:cmake/utils.cmake) for details.
+```
+
+### 6.2 Referencing Other Rules
+
+```markdown
+Refer to the [C++ Coding Standards](mdc:.cursor/rules/cpp/cpp-coding-standards.mdc) for naming conventions.
+```
+
+## 7. Maintenance
+
+### 7.1 Keeping Rules Current
+
+- Review rules periodically for relevance
+- Update examples when APIs or patterns change
+- Remove obsolete rules promptly
+
+### 7.2 Version Control
+
+- All rule changes should be reviewed
+- Document significant changes in commit messages
+- Avoid breaking changes to rule structure without team discussion

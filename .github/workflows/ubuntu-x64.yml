@@ -1,0 +1,155 @@
+name: ubuntu-x64
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+permissions:
+  actions: write
+
+jobs:
+  ubuntu-x64:
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [linux-gcc-x64, linux-clang-x64]
+        build_type: [Debug, Release, RelWithDebInfo, MinSizeRel]
+        build_shared: [ON, OFF]
+        use_blas_lapack: [OpenBLAS]
+        use_boost_unordered: [ON]
+
+    runs-on: ubuntu-26.04
+    name: ${{ matrix.toolchain }}.${{ matrix.build_type }}.build-shared-${{ matrix.build_shared }}.boost-unordered-${{ matrix.use_boost_unordered }}.blas-lapack-${{ matrix.use_blas_lapack }}
+    env:
+      GCC_VERSION: "16"
+      CLANG_VERSION: "22"
+
+    steps:
+      - name: Checkout repository
+        id: checkout-repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup gcc
+        id: setup-gcc
+        if: matrix.toolchain == 'linux-gcc-x64'
+        run: |
+          sudo apt-get update && sudo apt-get -y install --no-install-recommends \
+            gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gfortran-${{ env.GCC_VERSION }} \
+            libstdc++-${{ env.GCC_VERSION }}-dev libgfortran-${{ env.GCC_VERSION }}-dev
+          for tool in gcc g++ gfortran cpp gcc-ar gcc-nm gcc-ranlib gcov gcov-tool gcov-dump lto-dump; do
+            sudo update-alternatives --remove-all ${tool} 2>/dev/null || true
+          done
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ env.GCC_VERSION }} ${{ env.GCC_VERSION }} \
+            --slave /usr/bin/g++ g++ /usr/bin/g++-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gfortran gfortran /usr/bin/gfortran-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/cpp cpp /usr/bin/cpp-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gcc-nm gcc-nm /usr/bin/gcc-nm-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-${{ env.GCC_VERSION }} \
+            --slave /usr/bin/lto-dump lto-dump /usr/bin/lto-dump-${{ env.GCC_VERSION }}
+          sudo update-alternatives --set gcc /usr/bin/gcc-${{ env.GCC_VERSION }}
+        shell: bash
+
+      - name: Setup clang
+        id: setup-clang
+        if: matrix.toolchain == 'linux-clang-x64'
+        run: |
+          sudo bash -c "$(curl -fsSL https://apt.llvm.org/llvm.sh)" "" ${{ env.CLANG_VERSION }} all
+          sudo apt-get -y install --no-install-recommends \
+            flang-${{ env.CLANG_VERSION }} libflang-${{ env.CLANG_VERSION }}-dev
+          echo "/usr/lib/llvm-${{ env.CLANG_VERSION }}/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setup ccache
+        id: setup-ccache
+        uses: Chocobo1/setup-ccache-action@v1
+        with:
+          store_cache: false
+          restore_cache: false
+          remove_stale_cache: true
+          override_cache_key: ccache_${{ matrix.toolchain }}_${{ matrix.build_type }}_build-shared-${{ matrix.build_shared }}_boost-unordered-${{ matrix.use_boost_unordered }}_blas-lapack-${{ matrix.use_blas_lapack }}
+
+      - name: Setup vcpkg
+        id: setup-vcpkg
+        uses: lukka/run-vcpkg@v11
+
+      - name: Setup uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Setup Python virtual environment
+        id: setup-python-venv
+        # Match the documented flow (see README): the venv is always created with
+        # --system-site-packages; harmless here since CI has no ROS.
+        run: |
+          uv venv --system-site-packages
+          uv sync --no-install-project
+        shell: bash
+
+      - name: Setup cmake
+        id: setup-cmake
+        uses: lukka/get-cmake@latest
+
+      - name: CMake test
+        id: cmake-test
+        uses: lukka/run-cmake@v10
+        env:
+          # Same false-positive boost odr-violation under gcc-15's ASan as
+          # the CMake step above.
+          ASAN_OPTIONS: ${{ matrix.toolchain == 'linux-gcc-x64' && 'detect_odr_violation=0' || '' }}
+        with:
+          configurePreset: ${{ matrix.toolchain }}
+          configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}', '-DBUILD_SHARED_LIBS=${{ matrix.build_shared }}', '-DBASJOO_USE_BOOST_UNORDERED=${{ matrix.use_boost_unordered }}', '-DBASJOO_USE_BLAS_LAPACK=${{ matrix.use_blas_lapack }}']"
+          buildPreset: ${{ matrix.toolchain }}
+          buildPresetAdditionalArgs: "[]"
+          testPreset: ${{ matrix.toolchain }}
+          testPresetAdditionalArgs: "[]"
+
+      - name: Setup xmake
+        id: setup-xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: XMake test
+        id: xmake-test
+        env:
+          # Same false-positive boost odr-violation under gcc-15's ASan as
+          # the CMake step above.
+          ASAN_OPTIONS: ${{ matrix.toolchain == 'linux-gcc-x64' && 'detect_odr_violation=0' || '' }}
+        run: |
+          case "${{ matrix.build_type }}" in
+            Debug) xmake_mode=debug ;;
+            Release) xmake_mode=release ;;
+            RelWithDebInfo) xmake_mode=releasedbg ;;
+            MinSizeRel) xmake_mode=minsizerel ;;
+          esac
+          case "${{ matrix.build_shared }}" in
+            ON) xmake_kind=shared ;;
+            OFF) xmake_kind=static ;;
+          esac
+          case "${{ matrix.use_boost_unordered }}" in
+            ON) xmake_boost_unordered=y ;;
+            OFF) xmake_boost_unordered=n ;;
+          esac
+          case "${{ matrix.use_blas_lapack }}" in
+            OpenBLAS) xmake_blas_lapack=openblas ;;
+            Netlib) xmake_blas_lapack=netlib ;;
+            MKL) xmake_blas_lapack=mkl ;;
+            OFF) xmake_blas_lapack=n ;;
+          esac
+          xmake f -y \
+            --toolchain=${{ matrix.toolchain }} \
+            --mode="${xmake_mode}" \
+            --kind="${xmake_kind}" \
+            --basjoo_use_boost_unordered="${xmake_boost_unordered}" \
+            --basjoo_use_blas_lapack="${xmake_blas_lapack}"
+          xmake build -y
+          xmake test -y -v

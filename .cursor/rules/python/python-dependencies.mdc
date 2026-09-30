@@ -1,0 +1,42 @@
+---
+globs: "pyproject.toml,uv.lock"
+description: "Python dependency management with uv and pyproject.toml for basjoo."
+---
+# Python Dependencies
+
+## 1. Source of Truth
+
+- **`pyproject.toml`** declares project metadata, dependencies, and tool configuration (**ruff**, **pyright**, **pytest**).
+- **`uv.lock`** pins transitive versions for reproducible builds.
+
+## 2. Adding Dependencies
+
+```bash
+uv add <package>
+uv add --dev <dev-only-package>
+```
+
+## 3. Lockfile
+
+After changing dependencies:
+
+```bash
+uv lock
+```
+
+Commit **`uv.lock`** when the project tracks it.
+
+## 4. Syncing Environments
+
+Create the venv with `--system-site-packages` first: the devcontainer's ROS pytest plugins import packages from `/usr/lib/python3/dist-packages`.
+
+```bash
+uv venv --system-site-packages
+uv sync --no-install-project
+```
+
+Use **`uv run <command>`** to execute tools and scripts inside the project environment.
+
+## 5. Constraints
+
+- Do not mix ad-hoc **`pip install`** instructions into CI or docs—use **`uv`** so the lockfile stays authoritative.

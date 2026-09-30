@@ -1,0 +1,6 @@
+target("test_common_fsm")
+    add_rules("basjoo.cxx.test")
+    add_includedirs("../../../src")
+    add_files("test_fsm.cpp")
+    add_deps("common_fsm", "common_logging")
+target_end()

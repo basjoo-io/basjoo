@@ -1,0 +1,60 @@
+---
+globs: "CMakeLists.txt,*.cmake"
+description: "CMake 3.31+ conventions for basjoo: basjoo_cxx_* helpers, CPM, presets, and target naming."
+---
+# CMake Coding Standards
+
+## 1. Version and Style
+
+- **CMake minimum**: 3.31+ (see root `CMakeLists.txt`).
+- Prefer **`target_*`** commands with clear **`PRIVATE` / `PUBLIC` / `INTERFACE`** visibility.
+- Use **`cmake_parse_arguments`** patterns already encapsulated in **`cmake/utils.cmake`** instead of ad-hoc custom macros.
+
+## 2. Helper Functions (`cmake/utils.cmake`)
+
+### `basjoo_cxx_library`
+
+Creates a library target with header file sets and optional sources.
+
+**Common arguments**:
+
+- `NAME` — target name (also used for `basjoo::NAME` alias).
+- `HDRS` — headers; if no non-header `SRCS`, builds an **INTERFACE** library.
+- `SRCS` — implementation files (`.cpp`, etc.).
+- `DEPS` — `target_link_libraries` **PUBLIC** entries.
+- `COPTS`, `DEFINES`, `LINKOPTS` — per-target options.
+- Flags: `PUBLIC`, `TESTONLY`, `DISABLE_INSTALL`.
+
+Include roots expose `src/` as build interface include (headers live under `src/basjoo/...`).
+
+### `basjoo_cxx_module`
+
+For C++ module interfaces (`.ixx`): `IXXS`, `SRCS`, `DEPS`, etc. Use when the project adopts modules for a target.
+
+### `basjoo_cxx_test`
+
+Wraps test executables when **`BASJOO_BUILD_TESTING`** is on:
+
+- Links **doctest**, **cxxopts**, **Matplot++** (as configured).
+- Registers **`add_test`** with the same name as the target.
+
+Skip adding tests when testing is disabled—respect the function’s guards.
+
+## 3. CPM
+
+- Declare dependencies via **CPM** in the project’s established include files (e.g. `cmake/dependencies.cmake` or equivalent).
+- Pin versions and keep download URLs / Git tags **immutable** (tags, not floating branches).
+
+## 4. Presets
+
+- Use **`CMakePresets.json`** for developer workflows; do not hardcode machine-specific paths in `CMakeLists.txt`.
+- **`CMAKE_BUILD_TYPE`**, **`CMAKE_EXPORT_COMPILE_COMMANDS`**, and toolchain files are set per preset.
+
+## 5. Install
+
+- Respect **`BASJOO_ENABLE_INSTALL`**: guard `install()` rules when the option is off.
+
+## 6. Naming
+
+- Target names: **`module_component`** style matching directory layout (e.g. `math_dense_vector`).
+- **`basjoo::`** namespace aliases are created automatically for libraries—link using `basjoo::target` in `target_link_libraries`.

@@ -1,0 +1,59 @@
+basjoo_cxx_library(
+  NAME
+    math_curve_proxy
+  HDRS
+    "curve_proxy.hpp"
+  DEPS
+    msft_proxy4
+    zpp_bits
+    math_concepts
+    math_piecewise_linear_curve
+    math_piecewise_cubic_curve
+    math_piecewise_quintic_curve
+    math_vec2
+    math_vec3
+)
+
+basjoo_cxx_library(
+  NAME
+    math_piecewise_linear_curve
+  HDRS
+    "piecewise_linear_curve.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_piecewise_linear_function
+    math_utils
+    math_vec2
+    math_vec3
+)
+
+basjoo_cxx_library(
+  NAME
+    math_piecewise_cubic_curve
+  HDRS
+    "piecewise_cubic_curve.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_cubic_interpolation
+    math_piecewise_cubic_function
+    math_utils
+    math_vec2
+    math_vec3
+)
+
+basjoo_cxx_library(
+  NAME
+    math_piecewise_quintic_curve
+  HDRS
+    "piecewise_quintic_curve.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_piecewise_quintic_function
+    math_quintic_interpolation
+    math_utils
+    math_vec2
+    math_vec3
+)

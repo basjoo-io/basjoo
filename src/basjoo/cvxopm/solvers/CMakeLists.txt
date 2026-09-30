@@ -1,0 +1,78 @@
+basjoo_cxx_library(
+  NAME
+    cvxopm_osqp_solver
+  HDRS
+    "osqp_solver.hpp"
+  SRCS
+    "osqp_solver.cpp"
+  DEPS
+    "$<IF:$<BOOL:${BUILD_SHARED_LIBS}>,osqp,osqpstatic>"
+    math_csc_matrix
+    cvxopm_osqp_problem
+    cvxopm_settings
+    cvxopm_result
+    cvxopm_info
+)
+
+basjoo_cxx_library(
+  NAME
+    cvxopm_lnsrch_solver
+  HDRS
+    "lnsrch_solver.hpp"
+    "detail/lnsrch.hpp"
+  DEPS
+    math_vectorx
+    math_mdfunction_proxy
+    cvxopm_dense_problem
+    cvxopm_settings
+    cvxopm_result
+    cvxopm_info
+)
+
+basjoo_cxx_library(
+  NAME
+    cvxopm_bfgs_solver
+  HDRS
+    "bfgs_solver.hpp"
+    "detail/lnsrch.hpp"
+    "detail/bfgs.hpp"
+  DEPS
+    math_vectorx
+    math_matrixx
+    math_mdfunction_proxy
+    cvxopm_dense_problem
+    cvxopm_settings
+    cvxopm_result
+    cvxopm_info
+)
+
+basjoo_cxx_library(
+  NAME
+    cvxopm_lbfgs_solver
+  HDRS
+    "bfgs_solver.hpp"
+    "detail/lnsrch.hpp"
+    "detail/lbfgs.hpp"
+  DEPS
+    math_vectorx
+    math_mdfunction_proxy
+    cvxopm_dense_problem
+    cvxopm_settings
+    cvxopm_result
+    cvxopm_info
+)
+
+basjoo_cxx_library(
+  NAME
+    cvxopm_amoeba_solver
+  HDRS
+    "amoeba_solver.hpp"
+    "detail/amoeba.hpp"
+  DEPS
+    math_vectorx
+    math_mdfunction_proxy
+    cvxopm_dense_problem
+    cvxopm_settings
+    cvxopm_result
+    cvxopm_info
+)

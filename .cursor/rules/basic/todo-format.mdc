@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+description: "TODO comment format and conventions for the basjoo project."
+---
+# TODO Format
+
+## 1. Standard TODO Format
+
+Use the following format for TODO comments:
+
+```
+// TODO(github_id): description [issue reference]
+```
+
+### Format Components
+- `github_id`: Your GitHub username (required)
+- `description`: Brief description of what needs to be done (required)
+- `[issue reference]`: Optional reference to issue, PR, or other context
+
+### Examples
+
+```cpp
+// TODO(janedoe): Implement error handling for edge cases
+// TODO(janedoe): Optimize this algorithm for large datasets [#123]
+// TODO(janedoe): Add unit tests for this function [issue: BASJOO-456]
+// TODO(janedoe): Refactor after API stabilizes [PR #789]
+```
+
+```python
+# TODO(janedoe): Implement error handling for edge cases
+# TODO(janedoe): Optimize this algorithm for large datasets [#123]
+# TODO(janedoe): Add unit tests for this function [issue: BASJOO-456]
+```
+
+## 2. Rules
+- **REQUIRED**: Always include your GitHub ID in parentheses
+- Keep descriptions concise but informative
+- Use `[issue reference]` to link to related issues, PRs, or tickets when applicable
+- TODO comments should describe actionable tasks
+- Remove TODO comments once the task is completed

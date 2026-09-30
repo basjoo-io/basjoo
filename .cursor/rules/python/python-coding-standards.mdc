@@ -1,0 +1,65 @@
+---
+globs: "*.py,*.pyi"
+description: "Python coding standards for basjoo: PEP 8, type hints, ruff, pyright, and minimal boilerplate."
+---
+# Python Coding Standards
+
+## 1. Tooling
+
+- **Formatter / linter**: **ruff** (configure in `pyproject.toml`).
+- **Type checker**: **pyright** (or the checker specified in `pyproject.toml`).
+- Run **`ruff check`** and **`ruff format`** on changed files; run **`pyright`** before completing substantive Python changes.
+
+## 2. Style
+
+- Follow **PEP 8** unless ruff rules override with project settings.
+- **Type hints** are **required** for public functions and methods (`def foo(x: int) -> str:`).
+- Prefer **`list`**, **`dict`**, **`tuple`** builtin generics (PEP 585) over `typing.List` when targeting 3.9+ (align with `pyproject.toml`).
+
+## 3. Imports
+
+Order: **standard library** → **third-party** → **local**. Separate groups with one blank line.
+
+```python
+import logging
+from pathlib import Path
+
+import numpy as np
+
+from basjoo.math.vector import Vector3
+```
+
+## 4. Modules and Packages
+
+- **No** `__init__.py` **unless** the package layout requires it (namespace packages or explicit re-exports). Prefer explicit submodule imports.
+- Keep modules focused; split large files by concern.
+
+## 5. Docstrings
+
+- Omit docstrings when **names + types** make behavior obvious.
+- Add docstrings for non-obvious preconditions, numerical tolerances, or side effects.
+
+## 6. Errors
+
+- Raise **specific** exceptions (`ValueError`, `TypeError`, custom subclasses).
+- Use **`raise ... from err`** when chaining exceptions.
+
+## 7. Naming
+
+- **Functions / variables**: `snake_case`
+- **Classes**: `PascalCase`
+- **Constants**: `UPPER_SNAKE_CASE`
+- **Private**: `_leading_underscore` for internal module or class members
+
+## 8. Comments
+
+- **English only**.
+- Explain **why**, not what the next line obviously does.
+
+## 9. Data
+
+- Prefer **`dataclasses`** or **`NamedTuple`** over unstructured tuples for structured data.
+
+## 10. Dependencies
+
+- Add with **`uv add`**; lock with **`uv lock`**. Do not hand-edit `uv.lock`.

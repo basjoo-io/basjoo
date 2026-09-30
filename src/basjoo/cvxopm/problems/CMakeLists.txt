@@ -1,0 +1,23 @@
+basjoo_cxx_library(
+  NAME
+    cvxopm_osqp_problem
+  HDRS
+    "osqp_problem.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_concepts
+    math_dok_matrix
+    math_lil_matrix
+)
+
+basjoo_cxx_library(
+  NAME
+    cvxopm_dense_problem
+  HDRS
+    "dense_problem.hpp"
+  DEPS
+    zpp_bits
+    math_vectorx
+    math_mdfunction_proxy
+)

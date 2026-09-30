@@ -1,0 +1,39 @@
+basjoo_cxx_test(
+  NAME
+    test_math_function_proxy
+  SRCS
+    test_function_proxy.cpp
+  DEPS
+    math_function_proxy
+    math_piecewise_linear_function
+    math_piecewise_cubic_function
+    math_piecewise_quintic_function
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_piecewise_linear_function1
+  SRCS
+    "test_piecewise_linear_function1.cpp"
+  DEPS
+    math_piecewise_linear_function
+    math_utils
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_piecewise_cubic_function1
+  SRCS
+    "test_piecewise_cubic_function1.cpp"
+  DEPS
+    math_piecewise_cubic_function
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_piecewise_quintic_function1
+  SRCS
+    "test_piecewise_quintic_function1.cpp"
+  DEPS
+    math_piecewise_quintic_function
+)

@@ -1,0 +1,88 @@
+basjoo_cxx_test(
+  NAME
+    test_math_sparse_matrix_proxy
+  SRCS
+    "test_sparse_matrix_proxy.cpp"
+  DEPS
+    math_sparse_matrix_proxy
+    math_dok_matrix
+    math_lil_matrix
+    math_coo_matrix
+    math_csc_matrix
+    math_csr_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_dok_matrix
+  SRCS
+    "test_dok_matrix.cpp"
+  DEPS
+    math_dok_matrix
+    math_lil_matrix
+    math_coo_matrix
+    math_csc_matrix
+    math_csr_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_lil_matrix
+  SRCS
+    "test_lil_matrix.cpp"
+  DEPS
+    math_lil_matrix
+    math_dok_matrix
+    math_coo_matrix
+    math_csc_matrix
+    math_csr_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_coo_matrix
+  SRCS
+    "test_coo_matrix.cpp"
+  DEPS
+    math_coo_matrix
+    math_dok_matrix
+    math_lil_matrix
+    math_csc_matrix
+    math_csr_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_csc_matrix
+  SRCS
+    "test_csc_matrix.cpp"
+  DEPS
+    math_dok_matrix
+    math_dok_matrix
+    math_lil_matrix
+    math_coo_matrix
+    math_csr_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_csr_matrix
+  SRCS
+    "test_csr_matrix.cpp"
+  DEPS
+    math_csr_matrix
+    math_dok_matrix
+    math_lil_matrix
+    math_coo_matrix
+    math_csc_matrix
+)
+
+basjoo_cxx_test(
+  NAME
+    test_math_qdldl_dcmp
+  SRCS
+    "test_qdldl_dcmp.cpp"
+  DEPS
+    math_qdldl_dcmp
+    math_vectorx
+)

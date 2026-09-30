@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+description: "Copyright and file-header requirements for basjoo source files."
+---
+# Copyright and File Headers
+
+## C++ (`.hpp`, `.cpp`, `.ixx`, etc.)
+
+**REQUIRED**: Start every C++ translation unit and header with a Doxygen file block:
+
+```cpp
+/**
+ * @file relative/path/to/file.hpp
+ * @brief Short description of the file’s purpose.
+ * @copyright Copyright (c) YYYY basjoo development team
+ */
+```
+
+- Replace `YYYY` with the year of creation or last substantial edit, per team policy.
+- Keep **exactly one blank line** after the closing `*/` before includes or pragma.
+
+## Python (`.py`, `.pyi`)
+
+Use a single-line header:
+
+```python
+# Copyright (c) YYYY basjoo development team. All rights reserved.
+```
+
+## Exemptions
+
+- **`CMakeLists.txt` and `*.cmake`**: no Doxygen copyright block (CMake lists first).
+- **`.mdc` Cursor rules**: YAML frontmatter **must** be line 1; do not prepend a copyright block.
+
+## License
+
+Project license: **BSD 3-Clause**. Do not paste full license text into every file unless project policy changes.

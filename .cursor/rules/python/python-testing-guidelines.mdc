@@ -1,0 +1,74 @@
+---
+globs: "*_test.py,*test_*.py"
+description: "pytest testing guidelines for basjoo Python code: AAA, fixtures, parametrization."
+---
+# Python Testing Guidelines
+
+## 1. Framework
+
+- Use **pytest** exclusively for Python tests.
+- Discover tests with `uv run pytest` from the repository root (or per `pyproject.toml`).
+
+## 2. Naming and Placement
+
+- Test files: **`test_<module>.py`** or **`<module>_test.py`**—follow the dominant style already in the tree.
+- Test functions: **`test_<behavior>_<condition>`** (e.g. `test_norm_returns_zero_for_zero_vector`).
+
+## 3. Structure — Arrange, Act, Assert
+
+```python
+def test_add_scalars() -> None:
+    # Arrange
+    a = 2
+    b = 3
+
+    # Act
+    result = add(a, b)
+
+    # Assert
+    assert result == 5
+```
+
+## 4. Fixtures
+
+- Shared setup belongs in **`conftest.py`** or scoped fixtures:
+
+```python
+import pytest
+
+@pytest.fixture
+def sample_vec() -> Vector3:
+    return Vector3(1.0, 0.0, 0.0)
+```
+
+- Choose **`function`**, **`class`**, **`module`**, or **`session`** scope deliberately.
+
+## 5. Parametrization
+
+```python
+@pytest.mark.parametrize(("x", "expected"), [(0, 0), (1, 1), (2, 4)])
+def test_square(x: int, expected: int) -> None:
+    assert square(x) == expected
+```
+
+## 6. Exceptions
+
+```python
+import pytest
+
+def test_invalid_dim_raises() -> None:
+    with pytest.raises(ValueError, match="dim"):
+        make_matrix(-1)
+```
+
+## 7. Mocking
+
+- Mock **I/O**, clocks, and external services—not the unit under test’s core logic.
+
+## 8. Async
+
+- If async code is introduced, use **pytest-asyncio** (or the project’s chosen plugin) consistently.
+
+## 9. Quality
+
+- Tests are production code: type hints, clear names, no dead imports.

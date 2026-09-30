@@ -1,0 +1,28 @@
+---
+globs: *.cc,*.h,*.cpp,*.hpp,*.cxx,*.py
+description: "General coding structure, naming, constants, and comments for basjoo C++ and Python."
+---
+# General Coding Standards
+
+## 1. Code Structure
+
+- Avoid **excessive blank lines**; use one blank line between logical sections inside functions.
+- Keep **symmetric structure** in branches: similar cases should look similar (same ordering of setup / compute / finalize).
+- Prefer **early return** over deep nesting when it clarifies control flow.
+
+## 2. Naming
+
+- **Function and method names** should describe observable behavior or results, not implementation trivia.
+- **C++**: follow project rules: `camelCase` functions, `m_` private members, `PascalCase` types (see `cpp/cpp-coding-standards.mdc`).
+- **Python**: `snake_case` functions and variables, `PascalCase` classes, `UPPER_SNAKE_CASE` module-level constants (PEP 8).
+
+## 3. Constants
+
+- Replace **magic numbers** with named constants (`constexpr`, `const`, or enum) unless the literal is universally obvious (e.g. `0`, `1` as indices in a trivial loop with comment).
+- Group related constants together near the type or in a small dedicated namespace.
+
+## 4. Comments
+
+- **English only** for comments and docstrings.
+- Do not comment **what** the code obviously does; comment **why**, invariants, or non-obvious numerical tolerances.
+- Do not leave commented-out code in commits—use version control history.

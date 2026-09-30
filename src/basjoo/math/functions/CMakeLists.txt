@@ -1,0 +1,65 @@
+basjoo_cxx_library(
+  NAME
+    math_function_proxy
+  HDRS
+    "function_proxy.hpp"
+  DEPS
+    msft_proxy4
+    zpp_bits
+    math_concepts
+    math_piecewise_linear_function
+    math_piecewise_cubic_function
+    math_piecewise_quintic_function
+)
+
+basjoo_cxx_library(
+  NAME
+    math_piecewise_linear_function
+  HDRS
+    "piecewise_linear_function.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_concepts
+    math_utils
+    math_vec2
+    math_vec3
+    math_vector
+    math_vectorx
+)
+
+basjoo_cxx_library(
+  NAME
+    math_piecewise_cubic_function
+  HDRS
+    "piecewise_cubic_function.hpp"
+    "boundary_mode.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_concepts
+    math_cubic_interpolation
+    math_utils
+    math_vec2
+    math_vec3
+    math_vector
+    math_vectorx
+)
+
+basjoo_cxx_library(
+  NAME
+    math_piecewise_quintic_function
+  HDRS
+    "piecewise_quintic_function.hpp"
+    "boundary_mode.hpp"
+  DEPS
+    zpp_bits
+    common_aligned_allocator
+    math_concepts
+    math_quintic_interpolation
+    math_utils
+    math_vec2
+    math_vec3
+    math_vector
+    math_vectorx
+)
