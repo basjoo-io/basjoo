@@ -56,7 +56,8 @@ class QrDcmp final {
 #ifdef BASJOO_USE_BLAS_LAPACK
         const lapack_int n = m_qr.nrows();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
         detail::DenseDegenerateTraitT<matrix_type> work(n);
         [[maybe_unused]] lapack_int info;
@@ -122,7 +123,8 @@ class QrDcmp final {
             b[i, i] = 1.0;
         }
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
         detail::DenseDegenerateTraitT<matrix_type> work(n);
         [[maybe_unused]] lapack_int info;
@@ -228,9 +230,12 @@ class QrDcmp final {
 #ifdef BASJOO_USE_BLAS_LAPACK
         const lapack_int n = b.size();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
-        const lapack_int ldb{matrix_type::order() == MatrixOrder::COL_MAJOR ? n : 1};
+        const lapack_int ldb{
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? n : 1
+        };
         detail::DenseDegenerateTraitT<matrix_type> work(n);
         [[maybe_unused]] lapack_int info;
         if constexpr (std::is_same_v<value_type, float>) {
@@ -328,9 +333,12 @@ class QrDcmp final {
         const lapack_int nrows = b.nrows();
         const lapack_int ncols = b.ncols();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
-        const lapack_int ldb{matrix_type::order() == MatrixOrder::COL_MAJOR ? nrows : ncols};
+        const lapack_int ldb{
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? nrows : ncols
+        };
         detail::DenseDegenerateTraitT<matrix_type> work(nrows);
         [[maybe_unused]] lapack_int info;
         if constexpr (std::is_same_v<value_type, float>) {

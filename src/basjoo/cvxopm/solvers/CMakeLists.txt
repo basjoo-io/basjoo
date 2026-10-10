@@ -21,7 +21,7 @@ basjoo_cxx_library(
     "lnsrch_solver.hpp"
     "detail/lnsrch.hpp"
   DEPS
-    math_vectorx
+    math_vector
     math_mdfunction_proxy
     cvxopm_dense_problem
     cvxopm_settings
@@ -37,8 +37,8 @@ basjoo_cxx_library(
     "detail/lnsrch.hpp"
     "detail/bfgs.hpp"
   DEPS
-    math_vectorx
-    math_matrixx
+    math_vector
+    math_matrix
     math_mdfunction_proxy
     cvxopm_dense_problem
     cvxopm_settings
@@ -54,7 +54,7 @@ basjoo_cxx_library(
     "detail/lnsrch.hpp"
     "detail/lbfgs.hpp"
   DEPS
-    math_vectorx
+    math_vector
     math_mdfunction_proxy
     cvxopm_dense_problem
     cvxopm_settings
@@ -69,7 +69,7 @@ basjoo_cxx_library(
     "amoeba_solver.hpp"
     "detail/amoeba.hpp"
   DEPS
-    math_vectorx
+    math_vector
     math_mdfunction_proxy
     cvxopm_dense_problem
     cvxopm_settings

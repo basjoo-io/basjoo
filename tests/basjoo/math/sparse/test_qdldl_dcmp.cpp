@@ -18,7 +18,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 #include "basjoo/math/sparse/csc_matrix.hpp"
 
 namespace basjoo::math {
@@ -46,7 +46,7 @@ TEST_CASE("FactorAndSolve") {
     const QdldlDcmp<CscMatrix<double, int>> dcmp{mat};
 
     SUBCASE("SolveB0") {
-        VectorX<double> b(3, 0.0);
+        Vector<double, std::dynamic_extent> b(3, 0.0);
         b[0] = 1.0;
         const auto x = dcmp.solve(b);
         CHECK(x[0] == doctest::Approx(5.0 / 18.0).epsilon(1e-14));
@@ -55,7 +55,7 @@ TEST_CASE("FactorAndSolve") {
     }
 
     SUBCASE("SolveB1") {
-        VectorX<double> b(3, 0.0);
+        Vector<double, std::dynamic_extent> b(3, 0.0);
         b[1] = 1.0;
         const auto x = dcmp.solve(b);
         CHECK(x[0] == doctest::Approx(-2.0 / 18.0).epsilon(1e-14));
@@ -64,7 +64,7 @@ TEST_CASE("FactorAndSolve") {
     }
 
     SUBCASE("SolveB2") {
-        VectorX<double> b(3, 0.0);
+        Vector<double, std::dynamic_extent> b(3, 0.0);
         b[2] = 1.0;
         const auto x = dcmp.solve(b);
         CHECK(x[0] == doctest::Approx(1.0 / 18.0).epsilon(1e-14));
@@ -110,7 +110,7 @@ TEST_CASE("ExampleFromQdldlSource") {
 
     const QdldlDcmp<CscMatrix<double, int>> dcmp{mat};
 
-    VectorX<double> rhs(kN, 0.0);
+    Vector<double, std::dynamic_extent> rhs(kN, 0.0);
     for (int i{0}; i < kN; ++i) {
         rhs[i] = kB[i];
     }

@@ -6,7 +6,7 @@ basjoo_cxx_library(
   DEPS
     msft_proxy4
     zpp_bits
-    math_matrixx
+    math_matrix
     math_linear_mdfunction
     math_quadratic_mdfunction
     math_rosenbrock_function

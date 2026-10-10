@@ -16,8 +16,7 @@
 
 #include "zpp_bits.h"
 
-#include "basjoo/math/dense/matrixx.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 #include "basjoo/math/mdfunctions/linear_mdfunction.hpp"
 #include "basjoo/math/mdfunctions/quadratic_mdfunction.hpp"
 #include "basjoo/math/mdfunctions/rosenbrock_function.hpp"
@@ -29,11 +28,11 @@
 namespace basjoo::cvxopm {
 
 TEST_CASE_TEMPLATE("QuadraticTest", T, float, double, long double) {
-    auto exact_quadratic_mdfunction = [](const ::basjoo::math::pmr::VectorX<T>& x) noexcept -> T {
+    auto exact_quadratic_mdfunction = [](const ::basjoo::math::pmr::Vector<T, std::dynamic_extent>& x) noexcept -> T {
         return x[0] * x[0] + x[0] * x[1] + x[1] * x[1] - x[0] * static_cast<T>(2.0) -
                x[1] * static_cast<T>(4.0) + static_cast<T>(1.0);
     };
-    ::basjoo::math::QuadraticMdFunction<::basjoo::math::pmr::VectorX<T>> quadratic_mdfunction(2);
+    ::basjoo::math::QuadraticMdFunction<::basjoo::math::pmr::Vector<T, std::dynamic_extent>> quadratic_mdfunction(2);
 
     quadratic_mdfunction.updateBias(1.0);
     quadratic_mdfunction.updateLinearCoeff(0, -2.0);
@@ -53,7 +52,7 @@ TEST_CASE_TEMPLATE("QuadraticTest", T, float, double, long double) {
 
     for (T x0 : x0s) {
         for (T x1 : x1s) {
-            const ::basjoo::math::pmr::VectorX<T> x{{x0, x1}};
+            const ::basjoo::math::pmr::Vector<T, std::dynamic_extent> x{{x0, x1}};
             CHECK_EQ(
                 dense_problem.cost(x), doctest::Approx(exact_quadratic_mdfunction(x)).epsilon(1E-5)
             );
@@ -62,12 +61,12 @@ TEST_CASE_TEMPLATE("QuadraticTest", T, float, double, long double) {
 }
 
 TEST_CASE_TEMPLATE("RosenBrockTest", T, float, double, long double) {
-    auto exact_rosenbrock_function = [](const ::basjoo::math::pmr::VectorX<T>& x) noexcept -> T {
+    auto exact_rosenbrock_function = [](const ::basjoo::math::pmr::Vector<T, std::dynamic_extent>& x) noexcept -> T {
         return (1.0 - x[0]) * (1.0 - x[0]) + 100.0 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]);
     };
     const DenseProblem<T> dense_problem(
         ::basjoo::math::makeMdFunctionProxy(
-            ::basjoo::math::RosenbrockFunction<::basjoo::math::pmr::VectorX<T>>(1.0, 100.0)
+            ::basjoo::math::RosenbrockFunction<::basjoo::math::pmr::Vector<T, std::dynamic_extent>>(1.0, 100.0)
         )
     );
 
@@ -78,7 +77,7 @@ TEST_CASE_TEMPLATE("RosenBrockTest", T, float, double, long double) {
 
     for (T x0 : x0s) {
         for (T x1 : x1s) {
-            const ::basjoo::math::pmr::VectorX<T> x{{x0, x1}};
+            const ::basjoo::math::pmr::Vector<T, std::dynamic_extent> x{{x0, x1}};
             CHECK_EQ(
                 dense_problem.cost(x), doctest::Approx(exact_rosenbrock_function(x)).epsilon(1E-5)
             );
@@ -87,7 +86,7 @@ TEST_CASE_TEMPLATE("RosenBrockTest", T, float, double, long double) {
 }
 
 TEST_CASE("SerializationTest") {
-    using param_type = ::basjoo::math::pmr::VectorX<double>;
+    using param_type = ::basjoo::math::pmr::Vector<double, std::dynamic_extent>;
 
     param_type linear_coeffs{{1.5, -2.5, 4.0}};
     const DenseProblem<double> dense_problem(

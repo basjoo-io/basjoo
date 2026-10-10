@@ -15,8 +15,8 @@ basjoo_cxx_test(
   DEPS
     zpp_bits
     math_utils
-    math_vectorx
-    math_matrixx
+    math_vector
+    math_matrix
     math_linear_mdfunction
     math_quadratic_mdfunction
     math_rosenbrock_function

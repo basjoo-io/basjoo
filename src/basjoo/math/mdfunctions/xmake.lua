@@ -3,7 +3,7 @@ target("math_mdfunction_proxy")
     add_includedirs("../../..")
     add_headerfiles("mdfunction_proxy.hpp")
     add_packages("msft_proxy4", "zpp_bits", {public = true})
-    add_deps("math_matrixx", "math_linear_mdfunction", "math_quadratic_mdfunction", "math_rosenbrock_function")
+    add_deps("math_matrix", "math_linear_mdfunction", "math_quadratic_mdfunction", "math_rosenbrock_function")
 target_end()
 
 target("math_linear_mdfunction")

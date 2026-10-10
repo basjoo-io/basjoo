@@ -12,76 +12,73 @@
 
 #pragma once
 
+#include <cstddef>
+#include <mdspan>
+
 #include "basjoo/math/concepts.hpp"
-#include "basjoo/math/dense/dense_traits.hpp"
+#include "basjoo/math/dense/dense_trait.hpp"
 
 namespace basjoo::math::detail {
 
-template <typename T, ::basjoo::math::MatrixOrder Order = ::basjoo::math::MatrixOrder::COL_MAJOR>
-struct DenseDegenerateTrait final {
-    static_assert(false, "MatrixDegenerationTrait is not implemented for this type.");
-};
+// Primary template left undefined so that unsupported types fail at the
+// point of use instead of triggering a hard error at instantiation.
+template <typename T, DenseLayout Layout = std::layout_left>
+struct DenseDegenerateTrait;
 
-template <typename T, ::basjoo::math::MatrixOrder Order = ::basjoo::math::MatrixOrder::COL_MAJOR>
-using DenseDegenerateTraitT = typename DenseDegenerateTrait<T, Order>::type;
+template <typename T, DenseLayout Layout = std::layout_left>
+using DenseDegenerateTraitT = typename DenseDegenerateTrait<T, Layout>::type;
 
 template <ScalarArithmetic Scalar>
-struct DenseDegenerateTrait<Scalar, ::basjoo::math::MatrixOrder::COL_MAJOR> final {
+struct DenseDegenerateTrait<Scalar, std::layout_left> final {
     using type = Scalar;
 };
 
 template <ScalarArithmetic Scalar>
-struct DenseDegenerateTrait<Scalar, ::basjoo::math::MatrixOrder::ROW_MAJOR> final {
+struct DenseDegenerateTrait<Scalar, std::layout_right> final {
     using type = Scalar;
 };
 
 template <
-    ScalarArithmetic Scalar, std::size_t NRows, std::size_t NCols,
-    ::basjoo::math::MatrixOrder Order>
+    typename Scalar, std::size_t R, std::size_t C, DenseLayout Layout, DenseAccessor AccessorPolicy,
+    Allocatory Alloc>
 struct DenseDegenerateTrait<
-    Matrix<Scalar, NRows, NCols, Order>, ::basjoo::math::MatrixOrder::COL_MAJOR>
+    Matrix<Scalar, std::extents<std::size_t, R, C>, Layout, AccessorPolicy, Alloc>,
+    std::layout_left>
     final {
-    using type = Vector<Scalar, NRows>;
+    using type = Vector<Scalar, R>;
 };
 
 template <
-    ScalarArithmetic Scalar, std::size_t NRows, std::size_t NCols,
-    ::basjoo::math::MatrixOrder Order>
+    typename Scalar, std::size_t R, std::size_t C, DenseLayout Layout, DenseAccessor AccessorPolicy,
+    Allocatory Alloc>
 struct DenseDegenerateTrait<
-    Matrix<Scalar, NRows, NCols, Order>, ::basjoo::math::MatrixOrder::ROW_MAJOR>
+    Matrix<Scalar, std::extents<std::size_t, R, C>, Layout, AccessorPolicy, Alloc>,
+    std::layout_right>
     final {
-    using type = Vector<Scalar, NCols>;
+    using type = Vector<Scalar, C>;
 };
 
-template <ScalarArithmetic Scalar, ::basjoo::math::MatrixOrder Order, Allocatory Alloc>
-struct DenseDegenerateTrait<MatrixX<Scalar, Order, Alloc>, ::basjoo::math::MatrixOrder::COL_MAJOR>
+template <typename Scalar, DenseLayout Layout, DenseAccessor AccessorPolicy, Allocatory Alloc>
+struct DenseDegenerateTrait<
+    Matrix<Scalar, std::dextents<std::size_t, 2>, Layout, AccessorPolicy, Alloc>, std::layout_left>
     final {
-    using type = VectorX<Scalar, Alloc>;
+    using type = Vector<Scalar, std::dynamic_extent, Alloc>;
 };
 
-template <ScalarArithmetic Scalar, ::basjoo::math::MatrixOrder Order, Allocatory Alloc>
-struct DenseDegenerateTrait<MatrixX<Scalar, Order, Alloc>, ::basjoo::math::MatrixOrder::ROW_MAJOR>
+template <typename Scalar, DenseLayout Layout, DenseAccessor AccessorPolicy, Allocatory Alloc>
+struct DenseDegenerateTrait<
+    Matrix<Scalar, std::dextents<std::size_t, 2>, Layout, AccessorPolicy, Alloc>, std::layout_right>
     final {
-    using type = VectorX<Scalar, Alloc>;
+    using type = Vector<Scalar, std::dynamic_extent, Alloc>;
 };
 
-template <ScalarArithmetic Scalar, std::size_t N>
-struct DenseDegenerateTrait<Vector<Scalar, N>, ::basjoo::math::MatrixOrder::COL_MAJOR> final {
+template <ScalarArithmetic Scalar, std::size_t Extent, Allocatory Alloc>
+struct DenseDegenerateTrait<Vector<Scalar, Extent, Alloc>, std::layout_left> final {
     using type = Scalar;
 };
 
-template <ScalarArithmetic Scalar, std::size_t N>
-struct DenseDegenerateTrait<Vector<Scalar, N>, ::basjoo::math::MatrixOrder::ROW_MAJOR> final {
-    using type = Scalar;
-};
-
-template <ScalarArithmetic Scalar, Allocatory Alloc>
-struct DenseDegenerateTrait<VectorX<Scalar, Alloc>, ::basjoo::math::MatrixOrder::COL_MAJOR> final {
-    using type = Scalar;
-};
-
-template <ScalarArithmetic Scalar, Allocatory Alloc>
-struct DenseDegenerateTrait<VectorX<Scalar, Alloc>, ::basjoo::math::MatrixOrder::ROW_MAJOR> final {
+template <ScalarArithmetic Scalar, std::size_t Extent, Allocatory Alloc>
+struct DenseDegenerateTrait<Vector<Scalar, Extent, Alloc>, std::layout_right> final {
     using type = Scalar;
 };
 

@@ -11,11 +11,13 @@
  */
 
 #include "basjoo/math/dense/matrix.hpp"
-#include "basjoo/math/dense/matrix_view.hpp"
-#include "basjoo/math/dense/matrixx.hpp"
 
 #include <array>
 #include <complex>
+#include <mdspan>
+#include <span>
+#include <type_traits>
+#include <utility>
 
 #include "zpp_bits.h"
 
@@ -76,21 +78,21 @@ using namespace std::literals::complex_literals;
 
 // clang-format off
 TEST_CASE_TEMPLATE("MatrixTest", T,
-    Matrix<float, 16, 16, MatrixOrder::COL_MAJOR>, Matrix<double, 16, 16, MatrixOrder::COL_MAJOR>,
-    Matrix<float, 16, 16, MatrixOrder::ROW_MAJOR>, Matrix<double, 16, 16, MatrixOrder::ROW_MAJOR>,
-    MatrixX<float, MatrixOrder::COL_MAJOR>, MatrixX<double, MatrixOrder::COL_MAJOR>,
-    MatrixX<float, MatrixOrder::ROW_MAJOR>, MatrixX<double, MatrixOrder::ROW_MAJOR>,
-    Matrix<std::complex<float>, 16, 16, MatrixOrder::COL_MAJOR>,
-    Matrix<std::complex<double>, 16, 16, MatrixOrder::COL_MAJOR>,
-    Matrix<std::complex<float>, 16, 16, MatrixOrder::ROW_MAJOR>,
-    Matrix<std::complex<double>, 16, 16, MatrixOrder::ROW_MAJOR>,
-    MatrixX<std::complex<float>, MatrixOrder::COL_MAJOR>,
-    MatrixX<std::complex<double>, MatrixOrder::COL_MAJOR>,
-    MatrixX<std::complex<float>, MatrixOrder::ROW_MAJOR>,
-    MatrixX<std::complex<double>, MatrixOrder::ROW_MAJOR>) {
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_left>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_right>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_left>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_right>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_right>) {
     // clang-format on
 
-    T A(kNRows, kNCols, 0.0);
+    T A(kNRows, kNCols, typename T::value_type{0.0});
     for (std::size_t i{0}; i < kNumValues; ++i) {
         if constexpr (std::is_floating_point_v<typename T::value_type>) {
             A[kRowIndices[i], kColIndices[i]] = kRealValues[i];
@@ -129,14 +131,14 @@ TEST_CASE_TEMPLATE("MatrixTest", T,
         }
     }
 
-    MatrixView<typename T::value_type, T::order()> matrix_view{A.view({6, 12}, {1, 7})};
+    auto matrix_mdspan{A.submdspan({6, 12}, {1, 7})};
     for (std::size_t i{0}; i < 6; ++i) {
         for (std::size_t j{0}; j < 6; ++j) {
             if constexpr (std::is_arithmetic_v<typename T::value_type>) {
-                CHECK_EQ(A[6 + i, 1 + j], matrix_view[i, j]);
+                CHECK_EQ(A[6 + i, 1 + j], matrix_mdspan[i, j]);
             } else {
-                CHECK_EQ(A[6 + i, 1 + j].real(), matrix_view[i, j].real());
-                CHECK_EQ(A[6 + i, 1 + j].imag(), matrix_view[i, j].imag());
+                CHECK_EQ(A[6 + i, 1 + j].real(), matrix_mdspan[i, j].real());
+                CHECK_EQ(A[6 + i, 1 + j].imag(), matrix_mdspan[i, j].imag());
             }
         }
     }
@@ -187,6 +189,311 @@ TEST_CASE_TEMPLATE("MatrixTest", T,
     in(other_A).or_throw();
 
     CHECK_EQ(A, other_A);
+}
+
+// clang-format off
+TEST_CASE_TEMPLATE("operator value categories reuse rvalue operand storage", T,
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_left>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_right>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_left>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_right>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_right>) {
+    // clang-format on
+
+    T A(kNRows, kNCols, typename T::value_type{0.0});
+    T B(kNRows, kNCols, typename T::value_type{0.0});
+    for (std::size_t i{0}; i < kNumValues; ++i) {
+        if constexpr (std::is_floating_point_v<typename T::value_type>) {
+            A[kRowIndices[i], kColIndices[i]] = kRealValues[i];
+            B[kRowIndices[i], kColIndices[i]] = kImagValues[i];
+        }
+        if constexpr (isComplexArithmeticV<typename T::value_type>) {
+            A[kRowIndices[i], kColIndices[i]] =
+                typename T::value_type(kRealValues[i], kImagValues[i]);
+            B[kRowIndices[i], kColIndices[i]] =
+                typename T::value_type(kImagValues[i], kRealValues[i]);
+        }
+    }
+
+    SUBCASE("lvalue + lvalue returns an independent object") {
+        const T expected = A + B;
+        CHECK(expected.identicalTo(A + B));
+        CHECK(&expected != &A);
+        CHECK(&expected != &B);
+    }
+
+    SUBCASE("lvalue + rvalue reuses the rvalue operand") {
+        T C{B};
+        const T expected = A + C;
+        T&& r = A + std::move(C);
+        static_assert(std::is_same_v<decltype((A + std::move(C))), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("rvalue + lvalue reuses the rvalue self") {
+        T D{A};
+        const T expected = D + B;
+        T&& r = std::move(D) + B;
+        static_assert(std::is_same_v<decltype((std::move(D) + B)), T&&>);
+        CHECK(&r == &D);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("lvalue - rvalue reuses the rvalue operand") {
+        T C{B};
+        const T expected = A - C;
+        T&& r = A - std::move(C);
+        static_assert(std::is_same_v<decltype((A - std::move(C))), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("unary minus on rvalue reuses the operand") {
+        T C{A};
+        const T expected = -C;
+        T&& r = -std::move(C);
+        static_assert(std::is_same_v<decltype((-std::move(C))), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("rvalue * scalar reuses the operand") {
+        T C{A};
+        const T expected = C * 2.0;
+        T&& r = std::move(C) * 2.0;
+        static_assert(std::is_same_v<decltype((std::declval<T&&>() * 2.0)), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("scalar * rvalue reuses the operand") {
+        T C{B};
+        const T expected = 3.0 * C;
+        T&& r = 3.0 * std::move(C);
+        static_assert(std::is_same_v<decltype((3.0 * std::declval<T&&>())), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("rvalue / scalar reuses the operand") {
+        T C{A};
+        const T expected = C / 2.0;
+        T&& r = std::move(C) / 2.0;
+        static_assert(std::is_same_v<decltype((std::declval<T&&>() / 2.0)), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+
+    SUBCASE("conjugated on rvalue reuses the operand") {
+        T C{B};
+        const T expected = C.conjugated();
+        T&& r = std::move(C).conjugated();
+        static_assert(std::is_same_v<decltype((std::declval<T&&>().conjugated())), T&&>);
+        CHECK(&r == &C);
+        CHECK(r.identicalTo(expected));
+    }
+}
+
+// clang-format off
+TEST_CASE_TEMPLATE("mdspan and submdspan expose storage with order-matching layout", T,
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_left>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_right>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_left>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_right>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_right>) {
+    // clang-format on
+
+    T A(kNRows, kNCols, typename T::value_type{0.0});
+    for (std::size_t i{0}; i < kNumValues; ++i) {
+        if constexpr (std::is_floating_point_v<typename T::value_type>) {
+            A[kRowIndices[i], kColIndices[i]] = kRealValues[i];
+        }
+        if constexpr (isComplexArithmeticV<typename T::value_type>) {
+            A[kRowIndices[i], kColIndices[i]] =
+                typename T::value_type(kRealValues[i], kImagValues[i]);
+        }
+    }
+
+    using mdspan_type = std::mdspan<
+        typename T::value_type, typename T::extents_type, typename T::layout_type,
+        std::default_accessor<typename T::value_type>>;
+    using const_mdspan_type = std::mdspan<
+        const typename T::value_type, typename T::extents_type, typename T::layout_type,
+        std::default_accessor<const typename T::value_type>>;
+    static_assert(std::is_same_v<typename mdspan_type::element_type, typename T::value_type>);
+    static_assert(
+        std::is_same_v<typename const_mdspan_type::element_type, const typename T::value_type>
+    );
+    static_assert(mdspan_type::rank() == 2);
+    if constexpr (std::is_same_v<typename T::layout_type, std::layout_left>) {
+        static_assert(std::is_same_v<typename mdspan_type::layout_type, std::layout_left>);
+    } else {
+        static_assert(std::is_same_v<typename mdspan_type::layout_type, std::layout_right>);
+    }
+    if constexpr (mdspan_type::static_extent(0) != std::dynamic_extent) {
+        static_assert(mdspan_type::static_extent(0) == kNRows);
+        static_assert(mdspan_type::static_extent(1) == kNCols);
+    } else {
+        static_assert(mdspan_type::static_extent(0) == std::dynamic_extent);
+        static_assert(mdspan_type::static_extent(1) == std::dynamic_extent);
+    }
+    // Whole-storage views go through the conversion operators, exercised via
+    // explicit mdspan construction over A's own data.
+    const mdspan_type a_view{A.data(), A.nrows(), A.ncols()};
+    const const_mdspan_type a_const_view{A.data(), A.nrows(), A.ncols()};
+    CHECK_EQ(a_view.data_handle(), A.data());
+    CHECK_EQ(a_view.extent(0), kNRows);
+    CHECK_EQ(a_view.extent(1), kNCols);
+    for (std::size_t i{0}; i < kNRows; ++i) {
+        for (std::size_t j{0}; j < kNCols; ++j) {
+            if constexpr (std::is_arithmetic_v<typename T::value_type>) {
+                CHECK_EQ(A[i, j], a_view[i, j]);
+                CHECK_EQ(A[i, j], a_const_view[i, j]);
+            } else {
+                CHECK_EQ(A[i, j].real(), a_view[i, j].real());
+                CHECK_EQ(A[i, j].imag(), a_view[i, j].imag());
+            }
+        }
+    }
+    mdspan_type a_mut_view{A.data(), A.nrows(), A.ncols()};
+    a_mut_view[0, 0] = A[0, 0];
+    CHECK_EQ(a_mut_view[0, 0], A[0, 0]);
+
+    SUBCASE("submdspan returns a strided block view of the storage") {
+        using pair_type = std::pair<std::size_t, std::size_t>;
+        auto block{A.submdspan(pair_type{6, 12}, pair_type{1, 7})};
+        using block_type = decltype(block);
+        static_assert(std::is_same_v<typename block_type::element_type, typename T::value_type>);
+        static_assert(std::is_same_v<typename block_type::layout_type, std::layout_stride>);
+        static_assert(block_type::rank() == 2);
+        CHECK_EQ(block.extent(0), 6);
+        CHECK_EQ(block.extent(1), 6);
+        for (std::size_t i{0}; i < 6; ++i) {
+            for (std::size_t j{0}; j < 6; ++j) {
+                if constexpr (std::is_arithmetic_v<typename T::value_type>) {
+                    CHECK_EQ(A[6 + i, 1 + j], block[i, j]);
+                } else {
+                    CHECK_EQ(A[6 + i, 1 + j].real(), block[i, j].real());
+                    CHECK_EQ(A[6 + i, 1 + j].imag(), block[i, j].imag());
+                }
+            }
+        }
+    }
+
+    // Implicit conversion to the stride mdspan layout (identicalTo parameter type).
+    using stride_mdspan_type = std::mdspan<
+        const typename T::value_type, std::dextents<std::size_t, 2>, std::layout_stride>;
+    static_assert(std::is_convertible_v<const T, stride_mdspan_type>);
+    static_assert(
+        std::is_convertible_v<
+            const T,
+            std::mdspan<
+                typename T::value_type, std::dextents<std::size_t, 2>, std::layout_stride>> == false
+    );
+
+    SUBCASE("matrix construction from an mdspan copies elementwise across orders") {
+        using pair_type = std::pair<std::size_t, std::size_t>;
+        auto block{A.submdspan(pair_type{3, 9}, pair_type{2, 8})};
+        Matrix<typename T::value_type, std::dextents<std::size_t, 2>, std::layout_right> copy{
+            block
+        };
+        CHECK_EQ(copy.nrows(), 6);
+        CHECK_EQ(copy.ncols(), 6);
+        for (std::size_t i{0}; i < 6; ++i) {
+            for (std::size_t j{0}; j < 6; ++j) {
+                if constexpr (std::is_arithmetic_v<typename T::value_type>) {
+                    CHECK_EQ(A[3 + i, 2 + j], copy[i, j]);
+                } else {
+                    CHECK_EQ(A[3 + i, 2 + j].real(), copy[i, j].real());
+                    CHECK_EQ(A[3 + i, 2 + j].imag(), copy[i, j].imag());
+                }
+            }
+        }
+    }
+
+    SUBCASE("submdspan vector-style slice applies along the non-unit dimension") {
+        using pair_type = std::pair<std::size_t, std::size_t>;
+        Matrix<typename T::value_type, std::dextents<std::size_t, 2>, typename T::layout_type>
+            row_like(1, kNCols, typename T::value_type{0.0});
+        Matrix<typename T::value_type, std::dextents<std::size_t, 2>, typename T::layout_type>
+            col_like(kNRows, 1, typename T::value_type{0.0});
+        for (std::size_t j{0}; j < kNCols; ++j) {
+            if constexpr (std::is_floating_point_v<typename T::value_type>) {
+                row_like[0, j] = kRealValues[j % kNumValues];
+            }
+            if constexpr (isComplexArithmeticV<typename T::value_type>) {
+                row_like[0, j] = typename T::value_type(
+                    kRealValues[j % kNumValues], kImagValues[j % kNumValues]
+                );
+            }
+        }
+        for (std::size_t i{0}; i < kNRows; ++i) {
+            if constexpr (std::is_floating_point_v<typename T::value_type>) {
+                col_like[i, 0] = kRealValues[i % kNumValues];
+            }
+            if constexpr (isComplexArithmeticV<typename T::value_type>) {
+                col_like[i, 0] = typename T::value_type(
+                    kRealValues[i % kNumValues], kImagValues[i % kNumValues]
+                );
+            }
+        }
+        auto row_slice{row_like.submdspan(pair_type{2, 5})};
+        auto col_slice{col_like.submdspan(pair_type{2, 5})};
+        CHECK_EQ(row_slice.extent(0), 1);
+        CHECK_EQ(row_slice.extent(1), 3);
+        CHECK_EQ(col_slice.extent(0), 3);
+        CHECK_EQ(col_slice.extent(1), 1);
+        for (std::size_t k{0}; k < 3; ++k) {
+            if constexpr (std::is_arithmetic_v<typename T::value_type>) {
+                CHECK_EQ(row_like[0, 2 + k], row_slice[0, k]);
+                CHECK_EQ(col_like[2 + k, 0], col_slice[k, 0]);
+            } else {
+                CHECK_EQ(row_like[0, 2 + k].real(), row_slice[0, k].real());
+                CHECK_EQ(col_like[2 + k, 0].real(), col_slice[k, 0].real());
+            }
+        }
+    }
+
+#if BASJOO_CHECK_PARAMS == 1
+    SUBCASE("submdspan validates ranges and vector-like shape") {
+        using pair_type = std::pair<std::size_t, std::size_t>;
+        CHECK_THROWS_AS(A.submdspan(pair_type{7, 5}, pair_type{0, 1}), std::out_of_range);
+        CHECK_THROWS_AS(A.submdspan(pair_type{0, 17}, pair_type{0, 1}), std::out_of_range);
+        CHECK_THROWS_AS(A.submdspan(pair_type{0, 1}, pair_type{0, 17}), std::out_of_range);
+        CHECK_THROWS(A.submdspan(pair_type{2, 5}));
+    }
+#endif
+}
+
+// clang-format off
+using MS = Matrix<float, 16, 16, ::basjoo::common::AlignedAllocator<float, 32>>;
+using MD = Matrix<double, 16, 16, ::basjoo::common::AlignedAllocator<double, 32>>;
+using MC = Matrix<std::complex<float>, 16, 16, ::basjoo::common::AlignedAllocator<std::complex<float>, 32>>;
+using MF = Matrix<float>;
+TEST_CASE_TEMPLATE("mdspan-shaped query surface: data_handle/is_exhaustive/is_always_*", T,
+    MS, MD, MC, MF) {
+    // clang-format on
+    static_assert(T::is_always_unique());
+    static_assert(T::is_always_exhaustive());
+    static_assert(T::is_always_strided());
+    T A(kNRows, kNCols, typename T::value_type{0.0});
+    CHECK_EQ(A.data_handle(), A.data());
+    CHECK(A.is_exhaustive());
 }
 
 } // namespace basjoo::math

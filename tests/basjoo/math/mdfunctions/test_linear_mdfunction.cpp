@@ -15,7 +15,7 @@
 #include "zpp_bits.h"
 
 #include "basjoo/math/dense/vector.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -23,7 +23,7 @@
 namespace basjoo::math {
 
 TEST_CASE_TEMPLATE(
-    "Basic", T, Vector<float, 5>, Vector<double, 5>, VectorX<float>, VectorX<double>
+    "Basic", T, Vector<float, 5>, Vector<double, 5>, Vector<float, std::dynamic_extent>, Vector<double, std::dynamic_extent>
 ) {
     T linear_coeffs(5);
     linear_coeffs[0] = 674.0;
@@ -73,7 +73,7 @@ TEST_CASE_TEMPLATE(
 }
 
 TEST_CASE_TEMPLATE(
-    "Serialization", T, Vector<float, 5>, Vector<double, 5>, VectorX<float>, VectorX<double>
+    "Serialization", T, Vector<float, 5>, Vector<double, 5>, Vector<float, std::dynamic_extent>, Vector<double, std::dynamic_extent>
 ) {
     T linear_coeffs(5);
     linear_coeffs[0] = 674.0;

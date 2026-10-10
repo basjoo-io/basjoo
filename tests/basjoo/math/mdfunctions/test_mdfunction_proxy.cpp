@@ -18,9 +18,8 @@
 
 #include "basjoo/math/dense/detail/dense_generate_trait.hpp"
 #include "basjoo/math/dense/matrix.hpp"
-#include "basjoo/math/dense/matrixx.hpp"
 #include "basjoo/math/dense/vector.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 #include "basjoo/math/mdfunctions/linear_mdfunction.hpp"
 #include "basjoo/math/mdfunctions/quadratic_mdfunction.hpp"
 #include "basjoo/math/mdfunctions/rosenbrock_function.hpp"
@@ -31,7 +30,7 @@
 namespace basjoo::math {
 
 TEST_CASE_TEMPLATE(
-    "Polymorphism", T, Vector<float, 5>, Vector<double, 5>, VectorX<float>, VectorX<double>
+    "Polymorphism", T, Vector<float, 5>, Vector<double, 5>, Vector<float, std::dynamic_extent>, Vector<double, std::dynamic_extent>
 ) {
     T linear_coeffs(5);
     linear_coeffs[0] = 674.0;

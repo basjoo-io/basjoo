@@ -18,6 +18,6 @@ basjoo_cxx_library(
     "dense_problem.hpp"
   DEPS
     zpp_bits
-    math_vectorx
+    math_vector
     math_mdfunction_proxy
 )

@@ -20,7 +20,6 @@
 #include "zpp_bits.h"
 
 #include "basjoo/math/concepts.hpp"
-#include "basjoo/math/dense/matrixx.hpp"
 #include "basjoo/math/mdfunctions/linear_mdfunction.hpp"
 #include "basjoo/math/mdfunctions/quadratic_mdfunction.hpp"
 #include "basjoo/math/mdfunctions/rosenbrock_function.hpp"

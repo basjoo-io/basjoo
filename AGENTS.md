@@ -45,7 +45,7 @@ Configure and build output directories follow `CMakePresets.json` (typically `ou
 
 | Language   | Version / Toolchain                                    | Primary Location                                     |
 | ---------- | ------------------------------------------------------ | ---------------------------------------------------- |
-| **C++**    | C++23, GCC 14+ or Clang 20+, MSVC where preset applies | `src/basjoo/`                                         |
+| **C++**    | C++23, GCC 16+ or Clang 18+ (std::mdspan), MSVC STL 19.39+ where preset applies | `src/basjoo/`                                         |
 | **CMake**  | 3.31+                                                  | `CMakeLists.txt`, `cmake/`                           |
 | **xmake**  | xmake 2.9+ (see `set_xmakever`)                        | `xmake.lua`, `xmake/`                                |
 | **Python** | 3.14+ via **uv**, bindings via **nanobind**             | `src/basjoo/`                                          |

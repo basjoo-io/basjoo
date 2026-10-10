@@ -17,8 +17,8 @@ basjoo_cxx_test(
   SRCS
     "test_lnsrch_solver.cpp"
   DEPS
-    math_vectorx
-    math_matrixx
+    math_vector
+    math_matrix
     math_quadratic_mdfunction
     math_rosenbrock_function
     cvxopm_dense_problem
@@ -31,8 +31,8 @@ basjoo_cxx_test(
   SRCS
     "test_bfgs_solver.cpp"
   DEPS
-    math_vectorx
-    math_matrixx
+    math_vector
+    math_matrix
     math_quadratic_mdfunction
     math_rosenbrock_function
     cvxopm_dense_problem
@@ -45,8 +45,8 @@ basjoo_cxx_test(
   SRCS
     "test_lbfgs_solver.cpp"
   DEPS
-    math_vectorx
-    math_matrixx
+    math_vector
+    math_matrix
     math_quadratic_mdfunction
     math_rosenbrock_function
     cvxopm_dense_problem
@@ -59,8 +59,8 @@ basjoo_cxx_test(
   SRCS
     "test_amoeba_solver.cpp"
   DEPS
-    math_vectorx
-    math_matrixx
+    math_vector
+    math_matrix
     math_quadratic_mdfunction
     math_rosenbrock_function
     cvxopm_dense_problem

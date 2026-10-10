@@ -16,7 +16,7 @@
 
 #include "zpp_bits.h"
 
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 #include "basjoo/math/mdfunctions/mdfunction_proxy.hpp"
 
 namespace basjoo::cvxopm {
@@ -26,7 +26,7 @@ class DenseProblem final {
   public:
     using value_type = Scalar;
     using index_type = Index;
-    using param_type = ::basjoo::math::pmr::VectorX<value_type>;
+    using param_type = ::basjoo::math::pmr::Vector<value_type>;
     using size_type = typename param_type::size_type;
 
     DenseProblem() noexcept = default;

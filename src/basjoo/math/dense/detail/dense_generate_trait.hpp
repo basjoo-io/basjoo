@@ -12,42 +12,46 @@
 
 #pragma once
 
-#include "basjoo/math/dense/dense_traits.hpp"
+#include "basjoo/math/dense/dense_trait.hpp"
 
 namespace basjoo::math::detail {
 
-template <typename T, ::basjoo::math::MatrixOrder Order = ::basjoo::math::MatrixOrder::COL_MAJOR>
-struct DenseGenerateTrait final {
-    static_assert(false, "MatrixDegenerationTrait is not implemented for this type.");
+// Primary template left undefined so that unsupported types fail at the
+// point of use instead of triggering a hard error at instantiation.
+template <typename T, DenseLayout Layout = std::layout_left>
+struct DenseGenerateTrait;
+
+template <typename T, DenseLayout Layout = std::layout_left>
+using DenseGenerateTraitT = typename DenseGenerateTrait<T, Layout>::type;
+
+template <ScalarArithmetic Scalar, std::size_t Extent, Allocatory Alloc>
+struct DenseGenerateTrait<::basjoo::math::Vector<Scalar, Extent, Alloc>, std::layout_left> final {
+    using type =
+        ::basjoo::math::Matrix<Scalar, std::extents<std::size_t, Extent, Extent>, std::layout_left>;
 };
 
-template <typename T, ::basjoo::math::MatrixOrder Order = ::basjoo::math::MatrixOrder::COL_MAJOR>
-using DenseGenerateTraitT = typename DenseGenerateTrait<T, Order>::type;
-
-template <ScalarArithmetic Scalar, std::size_t N>
-struct DenseGenerateTrait<::basjoo::math::Vector<Scalar, N>, ::basjoo::math::MatrixOrder::COL_MAJOR>
-    final {
-    using type = ::basjoo::math::Matrix<Scalar, N, N, ::basjoo::math::MatrixOrder::COL_MAJOR>;
-};
-
-template <ScalarArithmetic Scalar, std::size_t N>
-struct DenseGenerateTrait<::basjoo::math::Vector<Scalar, N>, ::basjoo::math::MatrixOrder::ROW_MAJOR>
-    final {
-    using type = ::basjoo::math::Matrix<Scalar, N, N, ::basjoo::math::MatrixOrder::ROW_MAJOR>;
-};
-
-template <ScalarArithmetic Scalar, Allocatory Alloc>
-struct DenseGenerateTrait<
-    ::basjoo::math::VectorX<Scalar, Alloc>, ::basjoo::math::MatrixOrder::COL_MAJOR>
-    final {
-    using type = ::basjoo::math::MatrixX<Scalar, ::basjoo::math::MatrixOrder::COL_MAJOR, Alloc>;
+template <ScalarArithmetic Scalar, std::size_t Extent, Allocatory Alloc>
+struct DenseGenerateTrait<::basjoo::math::Vector<Scalar, Extent, Alloc>, std::layout_right> final {
+    using type = ::basjoo::math::Matrix<
+        Scalar, std::extents<std::size_t, Extent, Extent>, std::layout_right>;
 };
 
 template <ScalarArithmetic Scalar, Allocatory Alloc>
 struct DenseGenerateTrait<
-    ::basjoo::math::VectorX<Scalar, Alloc>, ::basjoo::math::MatrixOrder::ROW_MAJOR>
+    ::basjoo::math::Vector<Scalar, std::dynamic_extent, Alloc>, std::layout_left>
     final {
-    using type = ::basjoo::math::MatrixX<Scalar, ::basjoo::math::MatrixOrder::ROW_MAJOR, Alloc>;
+    using type = ::basjoo::math::Matrix<
+        Scalar, std::dextents<std::size_t, 2>, std::layout_left, std::default_accessor<Scalar>,
+        Alloc>;
+};
+
+template <ScalarArithmetic Scalar, Allocatory Alloc>
+struct DenseGenerateTrait<
+    ::basjoo::math::Vector<Scalar, std::dynamic_extent, Alloc>, std::layout_right>
+    final {
+    using type = ::basjoo::math::Matrix<
+        Scalar, std::dextents<std::size_t, 2>, std::layout_right, std::default_accessor<Scalar>,
+        Alloc>;
 };
 
 } // namespace basjoo::math::detail

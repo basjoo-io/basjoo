@@ -21,9 +21,7 @@
 
 #include "basjoo/math/dense/detail/dense_degenerate_trait.hpp"
 #include "basjoo/math/dense/matrix.hpp"
-#include "basjoo/math/dense/matrixx.hpp"
 #include "basjoo/math/dense/vector.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
 #include "basjoo/math/type_traits.hpp"
 
 namespace {
@@ -90,18 +88,18 @@ using namespace std::literals::complex_literals;
 
 // clang-format off
 TEST_CASE_TEMPLATE("MatrixTest", T,
-    Matrix<float, 16, 16, MatrixOrder::COL_MAJOR>, Matrix<double, 16, 16, MatrixOrder::COL_MAJOR>,
-    Matrix<float, 16, 16, MatrixOrder::ROW_MAJOR>, Matrix<double, 16, 16, MatrixOrder::ROW_MAJOR>,
-    MatrixX<float, MatrixOrder::COL_MAJOR>, MatrixX<double, MatrixOrder::COL_MAJOR>,
-    MatrixX<float, MatrixOrder::ROW_MAJOR>, MatrixX<double, MatrixOrder::ROW_MAJOR>,
-    Matrix<std::complex<float>, 16, 16, MatrixOrder::COL_MAJOR>,
-    Matrix<std::complex<double>, 16, 16, MatrixOrder::COL_MAJOR>,
-    Matrix<std::complex<float>, 16, 16, MatrixOrder::ROW_MAJOR>,
-    Matrix<std::complex<double>, 16, 16, MatrixOrder::ROW_MAJOR>,
-    MatrixX<std::complex<float>, MatrixOrder::COL_MAJOR>,
-    MatrixX<std::complex<double>, MatrixOrder::COL_MAJOR>,
-    MatrixX<std::complex<float>, MatrixOrder::ROW_MAJOR>,
-    MatrixX<std::complex<double>, MatrixOrder::ROW_MAJOR>) {
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_left>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<float, std::extents<std::size_t, 16, 16>, std::layout_right>, Matrix<double, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_left>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<float, std::dextents<std::size_t, 2>, std::layout_right>, Matrix<double, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_left>,
+    Matrix<std::complex<float>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<double>, std::extents<std::size_t, 16, 16>, std::layout_right>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_left>,
+    Matrix<std::complex<float>, std::dextents<std::size_t, 2>, std::layout_right>,
+    Matrix<std::complex<double>, std::dextents<std::size_t, 2>, std::layout_right>) {
     // clang-format on
 
     T A(kNRows, kNCols, 0.0);

@@ -29,23 +29,23 @@
 #include "zpp_bits.h"
 
 #include "basjoo/math/concepts.hpp"
-#include "basjoo/math/dense/dense_traits.hpp"
+#include "basjoo/math/dense/dense_trait.hpp"
 #include "basjoo/math/dense/detail/dense_norm_trait.hpp"
 #include "basjoo/math/type_traits.hpp"
 
 namespace basjoo::math {
 
-template <ScalarArithmetic T>
-class alignas(2 * sizeof(T)) Vector<T, 2> final {
+template <ScalarArithmetic T, Allocatory Alloc>
+class alignas(2 * sizeof(T)) Vector<T, 2, Alloc> final {
   public:
-    using value_type = typename DenseTraits<Vector>::value_type;
-    using reference = typename DenseTraits<Vector>::reference;
-    using const_reference = typename DenseTraits<Vector>::const_reference;
-    using pointer = typename DenseTraits<Vector>::pointer;
-    using const_pointer = typename DenseTraits<Vector>::const_pointer;
-    using size_type = typename DenseTraits<Vector>::size_type;
-    using difference_type = typename DenseTraits<Vector>::difference_type;
-    using allocator_type = typename DenseTraits<Vector>::allocator_type;
+    using value_type = typename DenseTrait<Vector>::value_type;
+    using reference = typename DenseTrait<Vector>::reference;
+    using const_reference = typename DenseTrait<Vector>::const_reference;
+    using pointer = typename DenseTrait<Vector>::pointer;
+    using const_pointer = typename DenseTrait<Vector>::const_pointer;
+    using size_type = typename DenseTrait<Vector>::size_type;
+    using difference_type = typename DenseTrait<Vector>::difference_type;
+    using allocator_type = typename DenseTrait<Vector>::allocator_type;
 
     [[using gnu: always_inline]]
     constexpr Vector(value_type cv) noexcept
@@ -890,10 +890,11 @@ class alignas(2 * sizeof(T)) Vector<T, 2> final {
         }
     }
 
-    template <size_type OuterSize, MatrixOrder ObjOrder>
+    template <size_type OuterSize, DenseLayout ObjLayout>
     [[using gnu: pure, always_inline, hot]]
-    constexpr auto dot(const Matrix<value_type, 2, OuterSize, ObjOrder>& obj) const noexcept
-        -> Vector {
+    constexpr auto dot(
+        const Matrix<value_type, std::extents<std::size_t, 2, OuterSize>, ObjLayout>& obj
+    ) const noexcept -> Vector {
         Vector<value_type, OuterSize> result(OuterSize, 0.0);
         for (size_type j{0}; j < OuterSize; ++j) {
             for (size_type i{0}; i < size(); ++i) {

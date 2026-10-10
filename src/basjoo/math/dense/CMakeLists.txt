@@ -1,8 +1,8 @@
 basjoo_cxx_library(
   NAME
-    math_dense_traits
+    math_dense_trait
   HDRS
-    "dense_traits.hpp"
+    "dense_trait.hpp"
   DEPS
     common_aligned_allocator
     math_concepts
@@ -10,12 +10,47 @@ basjoo_cxx_library(
 
 basjoo_cxx_library(
   NAME
-    math_vector_view
+    math_dense_dot_trait
   HDRS
-    "vector_view.hpp"
+    "detail/dense_dot_trait.hpp"
   DEPS
     math_concepts
-    math_dense_traits
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_transposed_trait
+  HDRS
+    "detail/dense_transposed_trait.hpp"
+  DEPS
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_dense_arithmetic_base
+  HDRS
+    "dense_arithmetic_base.hpp"
+    "detail/dense_norm_trait.hpp"
+  DEPS
+    blas_lapack
+    math_concepts
+    math_dense_trait
+)
+
+basjoo_cxx_library(
+  NAME
+    math_vector_base
+  HDRS
+    "vector_base.hpp"
+  DEPS
+    blas_lapack
+    math_concepts
+    math_dense_arithmetic_base
+    math_dense_dot_trait
+    math_type_traits
 )
 
 basjoo_cxx_library(
@@ -23,37 +58,26 @@ basjoo_cxx_library(
     math_vector
   HDRS
     "vector.hpp"
-    "detail/dense_norm_trait.hpp"
   DEPS
     zpp_bits
     blas_lapack
     math_concepts
-    math_dense_traits
-    math_vector_view
+    math_dense_trait
+    math_vector_base
 )
 
 basjoo_cxx_library(
   NAME
-    math_vectorx
+    math_matrix_base
   HDRS
-    "vectorx.hpp"
-    "detail/dense_norm_trait.hpp"
+    "matrix_base.hpp"
   DEPS
-    zpp_bits
     blas_lapack
     math_concepts
-    math_dense_traits
-    math_vector_view
-)
-
-basjoo_cxx_library(
-  NAME
-    math_matrix_view
-  HDRS
-    "matrix_view.hpp"
-  DEPS
-    math_concepts
-    math_dense_traits
+    math_dense_arithmetic_base
+    math_dense_dot_trait
+    math_dense_transposed_trait
+    math_type_traits
 )
 
 basjoo_cxx_library(
@@ -61,27 +85,12 @@ basjoo_cxx_library(
     math_matrix
   HDRS
     "matrix.hpp"
-    "detail/dense_norm_trait.hpp"
   DEPS
     zpp_bits
     blas_lapack
     math_concepts
-    math_dense_traits
-    math_matrix_view
-)
-
-basjoo_cxx_library(
-  NAME
-    math_matrixx
-  HDRS
-    "matrixx.hpp"
-    "detail/dense_norm_trait.hpp"
-  DEPS
-    zpp_bits
-    blas_lapack
-    math_concepts
-    math_dense_traits
-    math_matrix_view
+    math_dense_trait
+    math_matrix_base
 )
 
 basjoo_cxx_library(
@@ -116,7 +125,7 @@ basjoo_cxx_library(
   DEPS
     zpp_bits
     math_concepts
-    math_dense_traits
+    math_dense_trait
 )
 
 basjoo_cxx_library(
@@ -129,5 +138,5 @@ basjoo_cxx_library(
     zpp_bits
     common_in_in_in_out_result
     math_concepts
-    math_dense_traits
+    math_dense_trait
 )

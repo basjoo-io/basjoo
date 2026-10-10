@@ -82,7 +82,6 @@ concept VecArithmetic = (
     requires(std::remove_cvref_t<T> a, std::remove_cvref_t<T> b) {
         { a + b } -> std::same_as<std::remove_cvref_t<T>>;
         { a - b } -> std::same_as<std::remove_cvref_t<T>>;
-        { a.dot(b) } -> std::same_as<typename std::remove_cvref_t<T>::value_type>;
         { a.euclideanTo(b) };
     } &&
 
@@ -99,7 +98,8 @@ concept MatArithmetic = (
         { a.data() };
         { a.nrows() } -> std::same_as<typename std::remove_cvref_t<T>::size_type>;
         { a.ncols() } -> std::same_as<typename std::remove_cvref_t<T>::size_type>;
-        { a.stride() } -> std::same_as<typename std::remove_cvref_t<T>::size_type>;
+        { a.stride(0) } -> std::same_as<typename std::remove_cvref_t<T>::size_type>;
+        { a.stride(1) } -> std::same_as<typename std::remove_cvref_t<T>::size_type>;
     } &&
 
     requires(std::remove_cvref_t<T> a, typename std::remove_cvref_t<T>::size_type i, typename std::remove_cvref_t<T>::size_type j) {
@@ -110,7 +110,6 @@ concept MatArithmetic = (
     requires(std::remove_cvref_t<T> a, std::remove_cvref_t<T> b) {
         { a + b } -> std::same_as<std::remove_cvref_t<T>>;
         { a - b } -> std::same_as<std::remove_cvref_t<T>>;
-        { a.dot(b) };
     } &&
 
     requires(std::remove_cvref_t<T> a, typename std::remove_cvref_t<T>::value_type b) {

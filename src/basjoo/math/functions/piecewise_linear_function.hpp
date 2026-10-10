@@ -31,7 +31,7 @@
 #include "basjoo/math/dense/vec2.hpp"
 #include "basjoo/math/dense/vec3.hpp"
 #include "basjoo/math/dense/vector.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 #include "basjoo/math/utils.hpp"
 
 namespace basjoo::math {

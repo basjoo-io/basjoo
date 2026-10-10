@@ -25,7 +25,7 @@ basjoo_cxx_library(
     math_vec2
     math_vec3
     math_vector
-    math_vectorx
+    math_vector
 )
 
 basjoo_cxx_library(
@@ -43,7 +43,7 @@ basjoo_cxx_library(
     math_vec2
     math_vec3
     math_vector
-    math_vectorx
+    math_vector
 )
 
 basjoo_cxx_library(
@@ -61,5 +61,5 @@ basjoo_cxx_library(
     math_vec2
     math_vec3
     math_vector
-    math_vectorx
+    math_vector
 )

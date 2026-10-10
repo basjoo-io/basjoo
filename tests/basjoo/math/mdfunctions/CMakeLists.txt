@@ -6,9 +6,9 @@ basjoo_cxx_test(
   DEPS
     math_mdfunction_proxy
     math_vector
-    math_vectorx
+    math_vector
     math_matrix
-    math_matrixx
+    math_matrix
     math_linear_mdfunction
     math_quadratic_mdfunction
     math_rosenbrock_function
@@ -21,7 +21,7 @@ basjoo_cxx_test(
     "test_linear_mdfunction.cpp"
   DEPS
     math_vector
-    math_vectorx
+    math_vector
     math_linear_mdfunction
 )
 
@@ -32,9 +32,9 @@ basjoo_cxx_test(
     "test_quadratic_mdfunction.cpp"
   DEPS
     math_vector
-    math_vectorx
+    math_vector
     math_matrix
-    math_matrixx
+    math_matrix
     math_quadratic_mdfunction
 )
 

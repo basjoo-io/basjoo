@@ -21,6 +21,7 @@
 
 #include "basjoo/math/concepts.hpp"
 #include "basjoo/math/dense/detail/dense_generate_trait.hpp"
+#include "basjoo/math/dense/matrix.hpp"
 
 namespace basjoo::math {
 

@@ -55,7 +55,8 @@ class LuDcmp final {
 #ifdef BASJOO_USE_BLAS_LAPACK
         const lapack_int n = m_lu.nrows();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
         [[maybe_unused]] lapack_int info;
         if constexpr (std::is_same_v<value_type, float>) {
@@ -102,7 +103,8 @@ class LuDcmp final {
 #ifdef BASJOO_USE_BLAS_LAPACK
         const lapack_int n = m_lu.nrows();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
         matrix_type b(m_lu), work(n, n);
         [[maybe_unused]] lapack_int info;
@@ -165,9 +167,12 @@ class LuDcmp final {
 #ifdef BASJOO_USE_BLAS_LAPACK
         lapack_int n = b.size();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
-        const lapack_int ldb{matrix_type::order() == MatrixOrder::COL_MAJOR ? n : 1};
+        const lapack_int ldb{
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? n : 1
+        };
         [[maybe_unused]] lapack_int info;
         if constexpr (std::is_same_v<value_type, float>) {
             info = LAPACKE_sgetrs_work(
@@ -225,9 +230,12 @@ class LuDcmp final {
         lapack_int nrows = b.nrows();
         lapack_int ncols = b.ncols();
         constexpr lapack_int matrix_layout{
-            matrix_type::order() == MatrixOrder::COL_MAJOR ? LAPACK_COL_MAJOR : LAPACK_ROW_MAJOR
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? LAPACK_COL_MAJOR
+                                                                                : LAPACK_ROW_MAJOR
         };
-        const lapack_int ldb{matrix_type::order() == MatrixOrder::COL_MAJOR ? nrows : ncols};
+        const lapack_int ldb{
+            std::is_same_v<typename matrix_type::layout_type, std::layout_left> ? nrows : ncols
+        };
         [[maybe_unused]] lapack_int info;
         if constexpr (std::is_same_v<value_type, float>) {
             info = LAPACKE_sgetrs_work(

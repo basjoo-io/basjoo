@@ -17,7 +17,7 @@
 #include "zpp_bits.h"
 
 #include "basjoo/math/dense/vec2.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest/doctest.h"
@@ -36,7 +36,7 @@ auto createFigureHandle() noexcept -> matplot::figure_handle {
 
 namespace basjoo::math {
 
-TEST_CASE_TEMPLATE("Basic", T, Vec2<float>, Vec2<double>, VectorX<float>, VectorX<double>) {
+TEST_CASE_TEMPLATE("Basic", T, Vec2<float>, Vec2<double>, Vector<float, std::dynamic_extent>, Vector<double, std::dynamic_extent>) {
     using value_type = typename T::value_type;
 
     auto exact_rosenbrock_function = [](const T& x) noexcept -> value_type {
@@ -89,7 +89,7 @@ TEST_CASE_TEMPLATE("Basic", T, Vec2<float>, Vec2<double>, VectorX<float>, Vector
     }
 }
 
-TEST_CASE_TEMPLATE("Serialization", T, Vec2<float>, Vec2<double>, VectorX<float>, VectorX<double>) {
+TEST_CASE_TEMPLATE("Serialization", T, Vec2<float>, Vec2<double>, Vector<float, std::dynamic_extent>, Vector<double, std::dynamic_extent>) {
     RosenbrockFunction<T> rosenbrock_function{1.0, 100.0};
 
     auto [data, out] = zpp::bits::data_out();

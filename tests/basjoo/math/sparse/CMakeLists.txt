@@ -84,5 +84,5 @@ basjoo_cxx_test(
     "test_qdldl_dcmp.cpp"
   DEPS
     math_qdldl_dcmp
-    math_vectorx
+    math_vector
 )

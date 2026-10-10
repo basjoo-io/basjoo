@@ -21,7 +21,7 @@
 #include "basjoo/cvxopm/result.hpp"
 #include "basjoo/cvxopm/settings.hpp"
 #include "basjoo/cvxopm/solvers/detail/lnsrch.hpp"
-#include "basjoo/math/dense/vectorx.hpp"
+#include "basjoo/math/dense/vector.hpp"
 #include "basjoo/math/mdfunctions/mdfunction_proxy.hpp"
 
 namespace basjoo::cvxopm {
@@ -30,7 +30,7 @@ template <std::floating_point Scalar, std::integral Index = int>
 struct LnsrchSolver final {
     using value_type = Scalar;
     using index_type = Index;
-    using param_type = ::basjoo::math::pmr::VectorX<value_type>;
+    using param_type = ::basjoo::math::pmr::Vector<value_type>;
     using size_type = std::size_t;
 
     LnsrchSolver() noexcept = delete;

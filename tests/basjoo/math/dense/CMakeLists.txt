@@ -4,9 +4,9 @@ basjoo_cxx_test(
   SRCS
     "test_vector.cpp"
   DEPS
-    math_vector_view
+    math_matrix
     math_vector
-    math_vectorx
+    math_vector
 )
 
 basjoo_cxx_test(
@@ -33,9 +33,8 @@ basjoo_cxx_test(
   SRCS
     "test_matrix.cpp"
   DEPS
-    math_matrix_view
     math_matrix
-    math_matrixx
+    math_matrix
 )
 
 basjoo_cxx_test(
@@ -47,9 +46,9 @@ basjoo_cxx_test(
     math_type_traits
     math_lu_dcmp
     math_vector
-    math_vectorx
+    math_vector
     math_matrix
-    math_matrixx
+    math_matrix
 )
 
 basjoo_cxx_test(
@@ -61,7 +60,7 @@ basjoo_cxx_test(
     math_type_traits
     math_qr_dcmp
     math_vector
-    math_vectorx
+    math_vector
     math_matrix
-    math_matrixx
+    math_matrix
 )
