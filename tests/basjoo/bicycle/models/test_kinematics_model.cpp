@@ -59,8 +59,9 @@ auto createFigureHandle() noexcept -> matplot::figure_handle {
  * @brief The nine subplots of a figure on a 3 x 3 grid, in reading order.
  *
  * The path in the plane leads the top row, followed by the position and the yaw errors. The rows
- * below hold the five fields of the state and the yaw rate against time, a quantity per subplot.
- * The labels are gnuplot's enhanced text, in which _ and ^ set subscripts and superscripts.
+ * below hold the position, the yaw, u and delta of the state and the yaw rate against time, a
+ * quantity per subplot. The labels are gnuplot's enhanced text, in which _ and ^ set subscripts and
+ * superscripts.
  */
 auto createAxesHandles(matplot::figure_handle& fig) noexcept -> std::vector<matplot::axes_handle> {
     const std::array<const char*, 8> ylabels{
@@ -139,11 +140,12 @@ using Control = KinematicsModelControl<T>;
 
 // The array storage lets the state arithmetic and the accessors run in constant expressions.
 consteval auto constantState() -> bool {
-    State<double> s{1.0, 2.0, 0.5, 3.0, 0.25};
+    State<double> s{1.0, 2.0, 0.0, 1.0, 3.0, 0.25};
     s += State<double>{1.0};
     s *= 2.0;
     s.u() -= 1.0;
-    return s.x() == 4.0 && s.u() == 7.0 && s[2] == 3.0 && s - s == State<double>{0.0};
+    return s.x() == 4.0 && s.u() == 7.0 && s[3] == 4.0 && s.sin_yaw() == 2.0 &&
+           s - s == State<double>{0.0};
 }
 static_assert(constantState());
 
@@ -171,11 +173,20 @@ template <std::floating_point T>
 }
 
 /**
+ * @brief A vehicle at the given position, heading the given yaw, with the given speed and steering
+ * angle.
+ */
+template <std::floating_point T>
+[[nodiscard]] auto stateWithYaw(T x, T y, T yaw, T u, T delta) noexcept -> State<T> {
+    return State<T>{x, y, std::sin(yaw), std::cos(yaw), u, delta};
+}
+
+/**
  * @brief A vehicle at the origin, heading kInitialYaw, with the given speed and steering angle.
  */
 template <std::floating_point T>
-[[nodiscard]] constexpr auto startAt(T u, T delta) noexcept -> State<T> {
-    return State<T>{static_cast<T>(0.0), static_cast<T>(0.0), kInitialYaw<T>, u, delta};
+[[nodiscard]] auto startAt(T u, T delta) noexcept -> State<T> {
+    return stateWithYaw(static_cast<T>(0.0), static_cast<T>(0.0), kInitialYaw<T>, u, delta);
 }
 
 /**
@@ -219,10 +230,11 @@ template <std::floating_point T>
 /**
  * @brief The error below which an integrator is as accurate as a scenario of kDuration can check.
  *
- * double holds every error to 1e-6. float rounds the heading, which winds up past 20 rad, by up to
- * 1e-6 rad a step, which builds up to errors of up to 5e-4 rad in the heading and 8e-3 m in the
- * position over a run of kDuration whatever the integrator does, so float is held to 1e-2 relative
- * to the scale of the quantity: its largest magnitude along the run, though at least one.
+ * double holds every error to 1e-6. float rounds the speed it accumulates by up to 1e-6 m / s a
+ * step, which builds up to errors of up to 7e-4 m / s in the speed, 3e-4 rad in the heading, which
+ * the speed turns, and 5e-3 m in the position over a run of kDuration whatever the integrator does,
+ * so float is held to 1e-2 relative to the scale of the quantity: its largest magnitude along the
+ * run, though at least one.
  */
 template <std::floating_point T>
 [[nodiscard]] constexpr auto accuracyFloor(T scale) noexcept -> T {
@@ -372,10 +384,10 @@ template <std::floating_point T>
 
 template <std::floating_point T>
 [[nodiscard]] auto stateOf(const Sample<T>& sample) noexcept -> State<T> {
-    return State<T>{
+    return stateWithYaw(
         sample.center.x(), sample.center.y(), sample.yaw,
         sample.speed * std::cos(slipAngleOf(sample.delta)), sample.delta
-    };
+    );
 }
 
 /**
@@ -420,9 +432,15 @@ template <std::floating_point T>
     return std::hypot(state.x() - reference.center.x(), state.y() - reference.center.y());
 }
 
+/**
+ * @brief Angle between the heading of the state and that of the closed form, the short way round:
+ * the closed form winds its yaw up past any number of turns, while yaw() answers within [-pi, pi].
+ */
 template <std::floating_point T>
 [[nodiscard]] auto yawErrorOf(const State<T>& state, const Sample<T>& reference) noexcept -> T {
-    return std::abs(state.yaw() - reference.yaw);
+    return std::abs(
+        std::remainder(state.yaw() - reference.yaw, static_cast<T>(2.0) * std::numbers::pi_v<T>)
+    );
 }
 
 template <std::floating_point T>
@@ -538,8 +556,9 @@ template <std::floating_point T>
  * way its order says it should.
  *
  * An error within accuracyFloor() of the scale of its quantity only has to stay there: either the
- * integrator is exact up to roundoff, such as forwardEuler() on the yaw at a constant speed, whose
- * rate it holds exactly, or the error is the rounding of float rather than the integrator's. Above
+ * integrator is exact up to roundoff, such as either one on the yaw along a straight line, or its
+ * error is too small for a scenario of kDuration to check, such as that of rungeKutta() on the yaw
+ * at a constant speed, or the error is the rounding of float rather than the integrator's. Above
  * the floor forwardEuler(), being first order, has to at least halve its error along with the
  * step, a ratio above 1.5, and the fourth order rungeKutta() has to cut it sixteen fold, a ratio
  * above 12. In float rungeKutta() is held to the floor alone: its error is rounding through and
@@ -560,12 +579,39 @@ auto checkErrorShrinks(IntegrateMode mode, T coarse_error, T fine_error, T scale
 }
 
 /**
+ * @brief Asserts that every integrator hands back a unit heading after every step.
+ *
+ * The heading is integrated in R^2, where forward Euler alone grows |z|^2 by a factor of
+ * 1 + h^2 r^2 a step, so this is what the normalization at the end of each step is there for. A
+ * normalized heading is still a few roundings off unit norm, hence the bound of a few epsilon.
+ */
+template <std::floating_point T>
+auto checkUnitHeading(const Trajectory<T>& trajectory) -> void {
+    constexpr T kTolerance{static_cast<T>(16.0) * std::numeric_limits<T>::epsilon()};
+    for (const IntegrateMode mode : kIntegrateModes) {
+        CAPTURE(mode);
+        const std::vector<State<T>>& trace{trajectory.trace(mode)};
+        T max_error{static_cast<T>(0.0)};
+        for (std::size_t i{1}; i < trace.size(); ++i) {
+            raiseTo(
+                max_error, std::abs(
+                               trace[i].cos_yaw() * trace[i].cos_yaw() +
+                               trace[i].sin_yaw() * trace[i].sin_yaw() - static_cast<T>(1.0)
+                           )
+            );
+        }
+        CHECK_LE(max_error, kTolerance);
+    }
+}
+
+/**
  * @brief Asserts that every integrator drives the steering angle and the longitudinal velocity as
- * the controls say.
+ * the controls say, and keeps the heading unit.
  *
  * The two controls are the rates of delta and u and are held constant over a step, so every
  * integrator has to bring both back where accumulating the piecewise constant controls by hand
- * puts them, up to roundoff. This is what carries the scenarios that have no closed form solution.
+ * puts them, up to roundoff. This, with checkUnitHeading(), is what carries the scenarios that have
+ * no closed form solution.
  */
 template <std::floating_point T>
 auto checkInvariants(
@@ -596,6 +642,7 @@ auto checkInvariants(
         CHECK_LE(max_u_error, accuracyFloor(u_scale));
         CHECK_LE(max_delta_error, accuracyFloor(delta_scale));
     }
+    checkUnitHeading(trajectory);
 }
 
 /**
@@ -617,11 +664,10 @@ auto checkClosedForm(
     fillReference(coarse, reference_at);
     fillReference(fine, reference_at);
     // The scale of every error is the largest magnitude of its quantity along the closed form; the
-    // yaw winds up without wrapping, and its rounding grows along with it.
+    // yaw error is an angle, which leaves it the scale of one accuracyFloor() falls back to.
     std::array<T, kErrorNames.size()> scales{};
     for (const Sample<T>& sample : coarse.reference) {
         raiseTo(scales[0], sample.center.euclidean());
-        raiseTo(scales[1], std::abs(sample.yaw));
         raiseTo(scales[2], std::abs(sample.speed));
     }
     for (const IntegrateMode mode : kIntegrateModes) {
@@ -693,11 +739,29 @@ auto checkConvergenceOrder(
 }
 
 /**
- * @brief Plots the path of every integrator in the plane, each field of its state and its yaw rate
- * against time, over the closed form solution where the scenario has one, with the decimal
+ * @brief Yaw angles along a run of states, each within pi of the one before, so that a heading
+ * that turns past pi plots as one continuous curve instead of jumping by 2 pi.
+ */
+auto unwrappedYawsOf(const std::vector<State<double>>& states) -> std::vector<double> {
+    std::vector<double> result;
+    result.reserve(states.size());
+    for (const State<double>& state : states) {
+        result.push_back(
+            result.empty() ? state.yaw()
+                           : result.back() +
+                                 std::remainder(state.yaw() - result.back(), 2.0 * std::numbers::pi)
+        );
+    }
+    return result;
+}
+
+/**
+ * @brief Plots the path of every integrator in the plane, its position, yaw, u and delta and its
+ * yaw rate against time, over the closed form solution where the scenario has one, with the decimal
  * logarithm of the position and yaw errors against that solution; the error subplots of a scenario
  * without one stay empty. Every curve keeps its color and line style across the nine subplots, so
- * that one legend across the top of the figure covers them all.
+ * that one legend across the top of the figure covers them all. The yaw is unwrapped along the run
+ * (see unwrappedYawsOf()), so that it winds up the way the closed form does.
  *
  * Both integrators take u and delta exactly, so their curves of u, delta and the yaw rate lie on
  * top of each other and on the closed form, and the speed error, which is roundoff, goes unplotted.
@@ -706,10 +770,9 @@ auto checkConvergenceOrder(
  * to zero, and a log axis drops zeros.
  */
 auto plotTrajectory(const std::string& title, const Trajectory<double>& trajectory) -> void {
-    // The subplot of every field of the state and of the yaw rate, as createAxesHandles() lays them
-    // out.
-    constexpr std::array<std::size_t, State<double>::size()> kFieldAxes{3, 4, 5, 6, 7};
-    constexpr std::size_t kYawRateAxis{8};
+    // The subplot of the first of x, y, the yaw, u, delta and the yaw rate, which
+    // createAxesHandles() lays out in this order.
+    constexpr std::size_t kFirstQuantityAxis{3};
     // The subplot of the position and the yaw errors, the first two of kErrorNames.
     constexpr std::array<std::size_t, 2> kErrorAxes{1, 2};
     const std::array<float, 4> reference_color{matplot::default_color(0)};
@@ -730,22 +793,23 @@ auto plotTrajectory(const std::string& title, const Trajectory<double>& trajecto
     }
     const auto plot_states = [&](const std::vector<State<double>>& states, const char* line_spec,
                                  const std::array<float, 4>& color) -> void {
-        std::array<std::vector<double>, State<double>::size()> fields;
-        std::vector<double> yaw_rates;
+        // x, y, the yaw, u, delta and the yaw rate, in the order of their subplots.
+        std::array<std::vector<double>, 6> quantities;
+        quantities[2] = unwrappedYawsOf(states);
         for (const State<double>& state : states) {
-            for (std::size_t f{0}; f < State<double>::size(); ++f) {
-                fields[f].push_back(state[f]);
-            }
-            yaw_rates.push_back(yawRateOf(state));
+            quantities[0].push_back(state.x());
+            quantities[1].push_back(state.y());
+            quantities[3].push_back(state.u());
+            quantities[4].push_back(state.delta());
+            quantities[5].push_back(yawRateOf(state));
         }
-        axes[0]->plot(fields[0], fields[1], line_spec)->line_width(2.0).color(color);
-        for (std::size_t f{0}; f < State<double>::size(); ++f) {
-            axes[kFieldAxes[f]]
-                ->plot(trajectory.ts, fields[f], line_spec)
+        axes[0]->plot(quantities[0], quantities[1], line_spec)->line_width(2.0).color(color);
+        for (std::size_t q{0}; q < quantities.size(); ++q) {
+            axes[kFirstQuantityAxis + q]
+                ->plot(trajectory.ts, quantities[q], line_spec)
                 ->line_width(2.0)
                 .color(color);
         }
-        axes[kYawRateAxis]->plot(trajectory.ts, yaw_rates, line_spec)->line_width(2.0).color(color);
     };
 
     if (has_reference) {
@@ -847,11 +911,14 @@ TEST_CASE_TEMPLATE("StraightLineAccelerateThenDecelerate", T, float, double) {
     };
 
     // A zero steering angle leaves no yaw rate and no lateral velocity, so every integrator has to
-    // keep the heading and the vehicle on its axis exactly.
+    // keep the vehicle on its axis exactly, and the heading where it starts up to the roundings of
+    // its normalization.
+    constexpr T kHeadingTolerance{static_cast<T>(4.0) * std::numeric_limits<T>::epsilon()};
     for (const IntegrateMode mode : kIntegrateModes) {
         CAPTURE(mode);
         for (const State<T>& state : trajectory.trace(mode)) {
-            CHECK_EQ(state.yaw(), kInitialYaw<T>);
+            CHECK_LE(std::abs(state.cos_yaw() - initial_state.cos_yaw()), kHeadingTolerance);
+            CHECK_LE(std::abs(state.sin_yaw() - initial_state.sin_yaw()), kHeadingTolerance);
             CHECK_EQ(state.delta(), static_cast<T>(0.0));
             CHECK_EQ(lateralVelocityOf(state), static_cast<T>(0.0));
         }
@@ -912,10 +979,10 @@ TEST_CASE_TEMPLATE("ConstantSpeedCircle", T, float, double) {
         CHECK_LE(std::abs(worldVelocityOf(state).euclidean() - speed), accuracyFloor(speed));
         CHECK_LE(std::abs(yawRateOf(state) - kappa * speed), accuracyFloor(kappa * speed));
     }
-    // Two full laps bring the vehicle back to where it started, heading two turns further on.
-    const T final_yaw{kInitialYaw<T> + static_cast<T>(4.0) * std::numbers::pi_v<T>};
+    // Two full laps bring the vehicle back to where it started, heading two turns further on, which
+    // is the very heading it started with.
     CHECK_LE(centerOf(runge_kutta.back()).euclideanTo(start.center), accuracyFloor(radius));
-    CHECK_LE(std::abs(runge_kutta.back().yaw() - final_yaw), accuracyFloor(final_yaw));
+    CHECK_LE(yawErrorOf(runge_kutta.back(), start), accuracyFloor(static_cast<T>(1.0)));
 
     if (plot_graph) {
         if constexpr (std::same_as<T, double>) {
@@ -950,7 +1017,6 @@ TEST_CASE_TEMPLATE("AcceleratingTurn", T, float, double) {
     const T beta{slipAngleOf(kDelta)};
     const T kappa{curvatureOf(kDelta)};
     const T top_speed{start.speed + kAccel / std::cos(beta) * kDuration<T>};
-    const T top_yaw{trajectory.reference.back().yaw};
     const std::vector<State<T>>& runge_kutta{trajectory.trace(IntegrateMode::RUNGE_KUTTA)};
     for (std::size_t i{0}; i < trajectory.ts.size(); ++i) {
         const State<T>& state{runge_kutta[i]};
@@ -959,9 +1025,9 @@ TEST_CASE_TEMPLATE("AcceleratingTurn", T, float, double) {
         CHECK_LE(
             std::abs(std::atan2(lateralVelocityOf(state), state.u()) - beta), accuracyFloor(beta)
         );
-        // state.yaw accumulates without wrapping (see ConstantSpeedCircle, which drives it past a
-        // full turn on purpose), while atan2() always answers in (-pi, pi], so the two only agree
-        // modulo 2 * pi once the course angle winds past that range over the run.
+        // state.yaw() answers within [-pi, pi], as atan2() does, but the slip angle carries the
+        // course past pi whenever the yaw comes within beta of it, so the two only agree modulo
+        // 2 * pi. Both are angles, which leaves them the scale of one.
         const T course_angle{state.yaw() + beta};
         const Vec2<T> velocity{worldVelocityOf(state)};
         const T velocity_angle{std::atan2(velocity.y(), velocity.x())};
@@ -971,7 +1037,7 @@ TEST_CASE_TEMPLATE("AcceleratingTurn", T, float, double) {
                     velocity_angle - course_angle, static_cast<T>(2.0) * std::numbers::pi_v<T>
                 )
             ),
-            accuracyFloor(top_yaw)
+            accuracyFloor(static_cast<T>(1.0))
         );
         CHECK_LE(std::abs(yawRateOf(state) - kappa * speed), accuracyFloor(kappa * top_speed));
     }
@@ -1008,10 +1074,6 @@ TEST_CASE_TEMPLATE("DecelerateThroughZeroIntoReverse", T, float, double) {
     const T beta{slipAngleOf(kDelta)};
     const T kappa{curvatureOf(kDelta)};
     const T top_speed{std::abs(start.speed)};
-    T top_yaw{static_cast<T>(0.0)};
-    for (const Sample<T>& sample : trajectory.reference) {
-        raiseTo(top_yaw, std::abs(sample.yaw));
-    }
     const std::vector<State<T>>& runge_kutta{trajectory.trace(IntegrateMode::RUNGE_KUTTA)};
     bool saw_forward{false};
     bool saw_reverse{false};
@@ -1025,9 +1087,8 @@ TEST_CASE_TEMPLATE("DecelerateThroughZeroIntoReverse", T, float, double) {
         CHECK_LE(
             std::abs(worldVelocityOf(state).euclidean() - std::abs(speed)), accuracyFloor(top_speed)
         );
-        // state.yaw accumulates without wrapping, while atan2() always answers in (-pi, pi], so
-        // the two only agree modulo 2 * pi once the course angle winds past that range over the
-        // run (see the matching comment in AcceleratingTurn).
+        // The course and the angle of the velocity only agree modulo 2 * pi, and are held to the
+        // scale of one (see the matching comment in AcceleratingTurn).
         const T course_angle{state.yaw() + beta};
         const Vec2<T> velocity{worldVelocityOf(state)};
         if (speed > static_cast<T>(1.0)) {
@@ -1039,7 +1100,7 @@ TEST_CASE_TEMPLATE("DecelerateThroughZeroIntoReverse", T, float, double) {
                         velocity_angle - course_angle, static_cast<T>(2.0) * std::numbers::pi_v<T>
                     )
                 ),
-                accuracyFloor(top_yaw)
+                accuracyFloor(static_cast<T>(1.0))
             );
         } else if (speed < static_cast<T>(-1.0)) {
             saw_reverse = true;
@@ -1052,7 +1113,7 @@ TEST_CASE_TEMPLATE("DecelerateThroughZeroIntoReverse", T, float, double) {
                         static_cast<T>(2.0) * std::numbers::pi_v<T>
                     )
                 ),
-                accuracyFloor(top_yaw)
+                accuracyFloor(static_cast<T>(1.0))
             );
             // A left steering angle turns the vehicle clockwise once it drives backwards.
             CHECK_LT(yawRateOf(state), static_cast<T>(0.0));
@@ -1213,10 +1274,10 @@ TEST_CASE_TEMPLATE("EvolveMatchesMarchingSingleSteps", T, float, double) {
 
     SUBCASE("WithoutSteps") {
         // Without a step to take, the initial state comes back untouched, traced or not.
-        const State<T> initial_state{
+        const State<T> initial_state{stateWithYaw(
             static_cast<T>(1.0), static_cast<T>(2.0), kInitialYaw<T>, static_cast<T>(8.0),
             static_cast<T>(0.15)
-        };
+        )};
         const Schedule<T> none{};
         std::vector<State<T>> trace(1);
         for (const IntegrateMode mode : kIntegrateModes) {
@@ -1229,37 +1290,78 @@ TEST_CASE_TEMPLATE("EvolveMatchesMarchingSingleSteps", T, float, double) {
 
 TEST_CASE_TEMPLATE("TangentFollowsTheEquationsOfMotion", T, float, double) {
     const KinematicsModel<T> model{unboundedModel<T>()};
-    const State<T> state{
+    const State<T> state{stateWithYaw(
         static_cast<T>(1.0), static_cast<T>(-2.0), kInitialYaw<T>, static_cast<T>(8.0),
         static_cast<T>(0.15)
-    };
+    )};
     const Control<T> control{static_cast<T>(-0.6), static_cast<T>(0.03)};
     const T tolerance{roundoffTolerance<T>()};
 
     SUBCASE("EveryFieldMatchesTheKinematicEquations") {
         // Written out from the slip angle the literature puts the model in rather than from the
         // body velocity tangent() is made of: the center of gravity moves along the course
-        // yaw + beta at the speed u / cos(beta) and turns at speed * sin(beta) / l_r, while the
-        // two controls are the rates of u and delta.
+        // yaw + beta at the speed u / cos(beta) and turns at speed * sin(beta) / l_r, which turns
+        // the heading at dz/dt = r i z, while the two controls are the rates of u and delta.
         const State<T> k{model.tangent(state, control)};
         const T beta{slipAngleOf(state.delta())};
         const T speed{state.u() / std::cos(beta)};
+        const T yaw_rate{speed * std::sin(beta) / kRearWheelbase<T>};
         const Vec2<T> velocity{
-            speed * std::cos(state.yaw() + beta), speed * std::sin(state.yaw() + beta)
+            speed * std::cos(kInitialYaw<T> + beta), speed * std::sin(kInitialYaw<T> + beta)
         };
         CHECK_LE(Vec2<T>{k.x(), k.y()}.euclideanTo(velocity), tolerance);
-        CHECK_LE(std::abs(k.yaw() - speed * std::sin(beta) / kRearWheelbase<T>), tolerance);
+        CHECK_LE(
+            Vec2<T>{k.cos_yaw(), k.sin_yaw()}.euclideanTo(
+                Vec2<T>{-yaw_rate * std::sin(kInitialYaw<T>), yaw_rate * std::cos(kInitialYaw<T>)}
+            ),
+            tolerance
+        );
         CHECK_EQ(k.u(), control.a());
         CHECK_EQ(k.delta(), control.omega());
+    }
+
+    SUBCASE("TheTangentScalesWithTheHeading") {
+        // tangent() takes the heading as it comes, so the velocity z (u + v i) and dz/dt = r i z
+        // both scale with it, while the rates of u and delta do not see it: the stages of
+        // rungeKutta(), whose heading is off unit norm, move at a speed scaled along with it.
+        constexpr T kScale{static_cast<T>(1.7)};
+        State<T> scaled{state};
+        scaled.cos_yaw() *= kScale;
+        scaled.sin_yaw() *= kScale;
+        const State<T> k{model.tangent(state, control)};
+        const State<T> k_scaled{model.tangent(scaled, control)};
+        CHECK_LE(
+            Vec2<T>{k_scaled.x(), k_scaled.y()}.euclideanTo(
+                Vec2<T>{k.x() * kScale, k.y() * kScale}
+            ),
+            tolerance
+        );
+        CHECK_LE(
+            Vec2<T>{k_scaled.cos_yaw(), k_scaled.sin_yaw()}.euclideanTo(
+                Vec2<T>{k.cos_yaw() * kScale, k.sin_yaw() * kScale}
+            ),
+            tolerance
+        );
+        CHECK_EQ(k_scaled.u(), k.u());
+        CHECK_EQ(k_scaled.delta(), k.delta());
+    }
+
+    SUBCASE("TheFlowKeepsTheNormOfTheHeading") {
+        // dz/dt is orthogonal to z, which is what keeps |z| constant along the exact flow and
+        // leaves only the integrators' own error for the normalization to take out.
+        const State<T> k{model.tangent(state, control)};
+        CHECK_LE(
+            std::abs(k.cos_yaw() * state.cos_yaw() + k.sin_yaw() * state.sin_yaw()), tolerance
+        );
     }
 
     SUBCASE("StandingStillIsAnEquilibrium") {
         // At rest with both controls at zero, whichever way the vehicle faces and the wheels point,
         // nothing moves: the tangent vanishes and every integrator leaves the state where it is.
-        const State<T> standing{
+        const State<T> standing{stateWithYaw(
             static_cast<T>(1.0), static_cast<T>(-2.0), kInitialYaw<T>, static_cast<T>(0.0),
             static_cast<T>(0.15)
-        };
+        )};
         const Control<T> idle{static_cast<T>(0.0), static_cast<T>(0.0)};
         CHECK_LE(
             distanceOf(model.tangent(standing, idle), State<T>{static_cast<T>(0.0)}), tolerance
@@ -1359,24 +1461,84 @@ TEST_CASE_TEMPLATE("ControlBoundsClampEveryEntryPoint", T, float, double) {
     }
 }
 
+TEST_CASE_TEMPLATE("IntegratorsKeepTheHeadingUnit", T, float, double) {
+    const KinematicsModel<T> model{unboundedModel<T>()};
+
+    SUBCASE("UnderFastTurning") {
+        // A tight turn over large steps, h r = 0.5: forward Euler alone would grow |z|^2 by a
+        // factor of 1 + h^2 r^2 = 1.25 a step. Both controls are zero, so the yaw rate stays put.
+        const State<T> initial_state{startAt(static_cast<T>(12.0), static_cast<T>(0.4))};
+        const T h{static_cast<T>(0.5) / yawRateOf(initial_state)};
+        const Schedule<T> schedule{
+            constantSchedule(500, h, static_cast<T>(0.0), static_cast<T>(0.0))
+        };
+        checkUnitHeading(simulate(model, initial_state, schedule));
+    }
+
+    SUBCASE("FromAHeadingJustOffUnitNorm") {
+        // A heading off unit norm by less than the integrators check against is accepted and comes
+        // back normalized.
+        State<T> initial_state{startAt(static_cast<T>(8.0), static_cast<T>(0.15))};
+        const T scale{
+            static_cast<T>(1.0) +
+            static_cast<T>(0.25) * std::sqrt(std::numeric_limits<T>::epsilon())
+        };
+        initial_state.cos_yaw() *= scale;
+        initial_state.sin_yaw() *= scale;
+        const Control<T> control{static_cast<T>(0.5), static_cast<T>(0.01)};
+        for (const IntegrateMode mode : kIntegrateModes) {
+            const State<T> next{stepWith(mode, model, initial_state, control, kH<T>)};
+            CHECK_LE(
+                std::abs(
+                    next.cos_yaw() * next.cos_yaw() + next.sin_yaw() * next.sin_yaw() -
+                    static_cast<T>(1.0)
+                ),
+                static_cast<T>(16.0) * std::numeric_limits<T>::epsilon()
+            );
+        }
+    }
+}
+
 TEST_CASE_TEMPLATE("StateArithmetic", T, float, double) {
     // Binary fractions keep every expected result exact for float as well as for double, and no
     // two fields agree, so an operator that mixed two of them up cannot hide behind a coincidence.
-    const State<T> lhs{
-        static_cast<T>(1.5), static_cast<T>(-2.5), static_cast<T>(0.75), static_cast<T>(7.5),
-        static_cast<T>(0.125)
-    };
-    const State<T> rhs{
-        static_cast<T>(0.5), static_cast<T>(1.5), static_cast<T>(-0.25), static_cast<T>(2.5),
-        static_cast<T>(-0.75)
-    };
+    // The arithmetic is that of vectors, so the headings here need not be unit.
+    const State<T> lhs{static_cast<T>(1.5),    static_cast<T>(-2.5), static_cast<T>(0.75),
+                       static_cast<T>(-0.375), static_cast<T>(7.5),  static_cast<T>(0.125)};
+    const State<T> rhs{static_cast<T>(0.5),   static_cast<T>(1.5), static_cast<T>(-0.25),
+                       static_cast<T>(0.625), static_cast<T>(2.5), static_cast<T>(-0.75)};
 
     SUBCASE("LayoutCoversEveryField") {
-        static_assert(State<T>::size() == 5);
+        static_assert(State<T>::size() == 6);
         CHECK_EQ(sizeof(State<T>), State<T>::size() * sizeof(T));
-        CHECK_EQ(lhs.data(), &lhs.x());
-        CHECK_EQ(&lhs.delta() - lhs.data(), static_cast<std::ptrdiff_t>(State<T>::size()) - 1);
-        CHECK_EQ(State<T>{}, State<T>{T{}, T{}, T{}, T{}, T{}});
+        const std::array<const T*, 6> fields{&lhs.x(),       &lhs.y(), &lhs.sin_yaw(),
+                                             &lhs.cos_yaw(), &lhs.u(), &lhs.delta()};
+        for (std::size_t i{0}; i < fields.size(); ++i) {
+            CHECK_EQ(fields[i], lhs.data() + i);
+        }
+    }
+
+    SUBCASE("DefaultIsAtRestHeadingAlongTheXAxis") {
+        const State<T> standing{};
+        for (std::size_t i{0}; i < State<T>::size(); ++i) {
+            CHECK_EQ(standing[i], i == 3 ? static_cast<T>(1.0) : static_cast<T>(0.0));
+        }
+    }
+
+    SUBCASE("YawReadsTheHeadingWhateverItsNorm") {
+        // atan2() covers all four quadrants, and a heading scaled off unit norm, as interpolated
+        // states carry, keeps its yaw.
+        for (const T yaw :
+             {static_cast<T>(-3.0), static_cast<T>(-1.2), static_cast<T>(0.0), static_cast<T>(0.3),
+              static_cast<T>(2.0), static_cast<T>(3.1)}) {
+            State<T> state{
+                stateWithYaw(static_cast<T>(1.0), static_cast<T>(2.0), yaw, kH<T>, kH<T>)
+            };
+            CHECK_EQ(state.yaw(), doctest::Approx(yaw).epsilon(roundoffTolerance<T>()));
+            state.cos_yaw() *= static_cast<T>(2.5);
+            state.sin_yaw() *= static_cast<T>(2.5);
+            CHECK_EQ(state.yaw(), doctest::Approx(yaw).epsilon(roundoffTolerance<T>()));
+        }
     }
 
     SUBCASE("EveryFieldTakesPartInEquality") {
@@ -1411,26 +1573,24 @@ TEST_CASE_TEMPLATE("StateArithmetic", T, float, double) {
         CHECK_EQ(
             lhs + rhs, State<T>{
                            static_cast<T>(2.0), static_cast<T>(-1.0), static_cast<T>(0.5),
-                           static_cast<T>(10.0), static_cast<T>(-0.625)
+                           static_cast<T>(0.25), static_cast<T>(10.0), static_cast<T>(-0.625)
                        }
         );
         CHECK_EQ(
             lhs - rhs, State<T>{
                            static_cast<T>(1.0), static_cast<T>(-4.0), static_cast<T>(1.0),
-                           static_cast<T>(5.0), static_cast<T>(0.875)
+                           static_cast<T>(-1.0), static_cast<T>(5.0), static_cast<T>(0.875)
                        }
         );
-        const State<T> scaled{
-            static_cast<T>(3.0), static_cast<T>(-5.0), static_cast<T>(1.5), static_cast<T>(15.0),
-            static_cast<T>(0.25)
-        };
+        const State<T> scaled{static_cast<T>(3.0),   static_cast<T>(-5.0), static_cast<T>(1.5),
+                              static_cast<T>(-0.75), static_cast<T>(15.0), static_cast<T>(0.25)};
         CHECK_EQ(lhs * static_cast<T>(2.0), scaled);
         CHECK_EQ(static_cast<T>(2.0) * lhs, scaled);
         CHECK_EQ(scaled / static_cast<T>(2.0), lhs);
         CHECK_EQ(
             -lhs, State<T>{
                       static_cast<T>(-1.5), static_cast<T>(2.5), static_cast<T>(-0.75),
-                      static_cast<T>(-7.5), static_cast<T>(-0.125)
+                      static_cast<T>(0.375), static_cast<T>(-7.5), static_cast<T>(-0.125)
                   }
         );
     }
@@ -1484,14 +1644,14 @@ TEST_CASE_TEMPLATE("ControlArithmetic", T, float, double) {
 TEST_CASE_TEMPLATE("StateSerializationRoundtrip", T, float, double) {
     for (const State<T>& state :
          {State<T>{},
-          State<T>{
+          stateWithYaw(
               static_cast<T>(1.5), static_cast<T>(-2.5), static_cast<T>(0.3), static_cast<T>(7.9),
               static_cast<T>(0.15)
-          },
-          State<T>{
+          ),
+          stateWithYaw(
               static_cast<T>(-3.2), static_cast<T>(4.1), static_cast<T>(-1.1), static_cast<T>(-6.0),
               static_cast<T>(-0.1)
-          }}) {
+          )}) {
         auto [data, in, out] = zpp::bits::data_in_out();
         REQUIRE(out(state).code == std::errc{});
         State<T> restored{};
@@ -1577,14 +1737,17 @@ auto checkInterpolation(const Value& origin, const Value& rate) -> void {
 }
 
 TEST_CASE_TEMPLATE("StateTrajectoriesInterpolate", T, float, double) {
+    // The heading fields are interpolated field by field like the others, which takes them off
+    // unit norm between the samples; tangent() takes such states as they come, their velocity
+    // scaled by the norm of their heading.
     checkInterpolation(
-        State<T>{
+        stateWithYaw(
             static_cast<T>(1.5), static_cast<T>(-2.5), static_cast<T>(0.3), static_cast<T>(7.5),
             static_cast<T>(0.15)
-        },
+        ),
         State<T>{
-            static_cast<T>(7.5), static_cast<T>(1.25), static_cast<T>(-0.4), static_cast<T>(-1.5),
-            static_cast<T>(0.05)
+            static_cast<T>(7.5), static_cast<T>(1.25), static_cast<T>(-0.4), static_cast<T>(0.3),
+            static_cast<T>(-1.5), static_cast<T>(0.05)
         }
     );
 }
@@ -1674,6 +1837,26 @@ TEST_CASE_TEMPLATE("RejectsInvalidArguments", T, float, double) {
         }
     }
 
+    SUBCASE("IntegratorsRejectHeadingOffUnitNorm") {
+        // The zero of the state, which generic code builds, is no heading at all, and one scaled
+        // off unit norm by more than sqrt(epsilon) is taken for a mistake. Nothing checks the
+        // heading before it reaches an integrator.
+        State<T> scaled{state};
+        scaled.cos_yaw() *= static_cast<T>(1.01);
+        scaled.sin_yaw() *= static_cast<T>(1.01);
+        for (const IntegrateMode mode : kIntegrateModes) {
+            for (const State<T>& rejected : {State<T>{static_cast<T>(0.0)}, scaled}) {
+                CHECK_THROWS_AS(
+                    static_cast<void>(stepWith(
+                        mode, model, rejected, Control<T>{static_cast<T>(1.0), static_cast<T>(0.0)},
+                        kH<T>
+                    )),
+                    std::invalid_argument
+                );
+            }
+        }
+    }
+
     SUBCASE("IntegratorsRejectSingularSteeringAngle") {
         // The steering angle is carried by the state, so this is where an omega that drove it out
         // of range over an earlier step surfaces.
@@ -1728,6 +1911,7 @@ TEST_CASE_TEMPLATE("RejectsInvalidArguments", T, float, double) {
 
 auto main(int argc, const char* argv[]) -> int {
     cxxopts::Options options("kinematics_model_test", "unit test of KinematicsModel class");
+    options.allow_unrecognised_options(); // doctest reads its own flags from argv below
     options.add_options()(
         "plot-graph", "plot test graph", cxxopts::value<bool>()->default_value("false")
     );

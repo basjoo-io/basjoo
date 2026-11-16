@@ -1,0 +1,7 @@
+target("quadrotor_dynamics_flow_controller")
+    set_kind("headeronly")
+    add_includedirs("../../..")
+    add_headerfiles("dynamics_flow_controller.hpp")
+    add_packages("zpp_bits", {public = true})
+    add_deps("math_dense_arithmetic_base", "math_integrate_mode", "quadrotor_dynamics_model")
+target_end()

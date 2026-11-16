@@ -91,7 +91,7 @@ RUN if [ -n "${ROS_DISTRO}" ]; then \
     && curl -fsSL -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb" \
     && dpkg -i /tmp/ros2-apt-source.deb && rm -f /tmp/ros2-apt-source.deb \
     && sed -i "s|http://packages.ros.org/ros2/ubuntu|${ROS_APT_REPOSITORY_URL}|g" /etc/apt/sources.list.d/ros2.sources \
-    && apt-get update && apt-get -y install --no-install-recommends ros-dev-tools ros-${ROS_DISTRO}-ros-base \
+    && apt-get update && apt-get -y install --no-install-recommends ros-dev-tools ros-${ROS_DISTRO}-ros-base ros-${ROS_DISTRO}-ros-gz \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* \
     && sed -i "$ a\export ROS_DISTRO=\"${ROS_DISTRO}\"\nsource /opt/ros/${ROS_DISTRO}/setup.bash" /etc/bash.bashrc \
     && sed -i "$ a\export ROS_DISTRO=\"${ROS_DISTRO}\"\nsource /opt/ros/${ROS_DISTRO}/setup.zsh" /etc/zsh/zshrc; \

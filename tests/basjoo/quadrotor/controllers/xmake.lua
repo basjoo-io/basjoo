@@ -1,0 +1,6 @@
+target("test_quadrotor_dynamics_flow_controller")
+    add_rules("basjoo.cxx.test")
+    add_includedirs("../../../../src")
+    add_files("test_dynamics_flow_controller.cpp")
+    add_deps("quadrotor_dynamics_flow_controller", "quadrotor_dynamics_model", "math_concepts", "math_function_proxy", "math_integrate_mode", "math_mat33", "math_piecewise_cubic_function", "math_piecewise_linear_function", "math_piecewise_quintic_function", "math_quaternion", "math_type_traits", "math_vec3")
+target_end()

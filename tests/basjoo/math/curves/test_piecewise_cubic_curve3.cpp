@@ -548,8 +548,9 @@ TEST_CASE("Serialization") {
 
 auto main(int argc, const char* argv[]) -> int {
     cxxopts::Options options(
-        "piecewise_linear_curve3_test", "unit test of PiecewiseLinearCurve3 class"
+        "piecewise_cubic_curve3_test", "unit test of PiecewiseCubicCurve3 class"
     );
+    options.allow_unrecognised_options(); // doctest reads its own flags from argv below
     options.add_options()(
         "plot-graph", "plot test graph", cxxopts::value<bool>()->default_value("false")
     );

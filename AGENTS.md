@@ -1,6 +1,6 @@
 # AGENTS.md — basjoo
 
-basjoo is a header-mostly **C++23** math library for autonomous driving and robotics — dense/sparse linear algebra, splines and piecewise functions, convex optimization, bicycle-model planning and control, quadrotor dynamics — with **nanobind** Python bindings. BSD 3-Clause.
+basjoo is a header-mostly **C++23** math library for autonomous driving and robotics — dense/sparse linear algebra, splines and piecewise functions, convex optimization, bicycle-model planning and control, quadrotor dynamics and control — with **nanobind** Python bindings. BSD 3-Clause.
 
 This file is the single source of truth for coding agents (Claude Code reads it as `CLAUDE.md`; Codex, Cursor, and Copilot read `AGENTS.md`). Detailed conventions live in `.claude/rules/`; Claude Code loads them automatically for matching paths, other agents should **read the matching rule before editing**:
 
@@ -21,7 +21,7 @@ src/basjoo/          C++ headers/sources + Python package (__init__.py, nanobind
   math/             dense, sparse, curves, functions, mdfunctions, fft, chebyshev, fixed
   cvxopm/           problems + solvers (OSQP, L-BFGS, BFGS, Nelder–Mead, line search)
   bicycle/          planners, models, controllers
-  quadrotor/        models
+  quadrotor/        models, controllers
 tests/basjoo/        doctest + pytest, mirrors src/basjoo/
 cmake/ xmake/       toolchains, helpers (basjoo_cxx_*), rules
 deps/               one CPM + xrepo fragment per third-party package

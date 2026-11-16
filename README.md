@@ -28,7 +28,7 @@ basjoo is a header-mostly **C++23** library with the math that planning and cont
 | `math`    | `basjoo::math`    | Dense `Vec2`/`Vec3`/`Mat22`/`Mat33`/`Vector`/`Matrix` with LU/QR (optional BLAS/LAPACK, AVX-512); sparse DOK/LIL/COO/CSR/CSC with QDLDL; linear/cubic/quintic curves and functions; multivariate functions; FFT, Chebyshev, fixed-point, polygons, quaternions |
 | `cvxopm`  | `basjoo::cvxopm`  | Sparse QP via OSQP; L-BFGS, BFGS, Nelder–Mead, and line-search solvers for dense problems              |
 | `bicycle` | `basjoo::bicycle` | Route lines, paths, motions, borders, fences; QP-based acceleration/offset/kinematics planners; kinematics/dynamics models; PID, feed-forward, MPC, and flow controllers |
-| `quadrotor` | `basjoo::quadrotor` | Rigid-body dynamics model driven by body torques and collective thrust |
+| `quadrotor` | `basjoo::quadrotor` | Rigid-body dynamics model driven by body torques and collective thrust; flow controller |
 
 Dependencies flow strictly `common → math → cvxopm → bicycle`; `quadrotor` sits beside `bicycle` and depends on `math` only. Curves, functions, and sparse matrices are type-erased through [Microsoft Proxy](https://github.com/microsoft/proxy) and serializable with [zpp_bits](https://github.com/eyalz800/zpp_bits).
 

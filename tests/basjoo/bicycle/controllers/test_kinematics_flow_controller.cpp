@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <complex>
 #include <concepts>
 #include <cstddef>
 #include <initializer_list>
@@ -57,7 +58,8 @@ auto createFigureHandle() noexcept -> matplot::figure_handle {
 
 /**
  * @brief The nine subplots of a figure on a 3 x 3 grid, in reading order: the path in the plane,
- * then the five plant fields and the three controller fields against time.
+ * then the position, the yaw, delta and u of the plant and the three controller fields against
+ * time.
  *
  * The labels are gnuplot's enhanced text, in which ^ sets a superscript.
  */
@@ -115,12 +117,18 @@ inline constexpr T kInitialYaw{static_cast<T>(0.3)};
 // The horizon of a fixed controller and the one an adaptive closed loop run starts with.
 template <std::floating_point T>
 inline constexpr T kHorizon{static_cast<T>(0.15)};
+// The bounds an adaptive controller keeps its horizon within, half as long again as kHorizon
+// either way.
+template <std::floating_point T>
+inline constexpr T kTauLowerBound{static_cast<T>(0.1)};
+template <std::floating_point T>
+inline constexpr T kTauUpperBound{static_cast<T>(0.225)};
 template <std::floating_point T>
 inline constexpr T kH{static_cast<T>(0.01)};
-// The longest horizon marchAlong() lets a step start with, and so how far past the last step its
-// reference has to reach.
+// The longest horizon a step can start with, and so how far past the last step a reference has to
+// reach.
 template <std::floating_point T>
-inline constexpr T kMaxPreview{static_cast<T>(3.0)};
+inline constexpr T kMaxPreview{kTauUpperBound<T>};
 // The mean spacing of the waypoints of a reference, ten steps of kH, from which every interval
 // strays by up to half either way (see waypointTimesOf()).
 inline constexpr double kWaypointSpacing{0.1};
@@ -179,44 +187,68 @@ template <std::floating_point T>
 }
 
 /**
- * @brief Controller of either mode. tau is the horizon of a fixed one and goes unused by an
- * adaptive one, whose horizon comes with the state.
+ * @brief Controller of either mode. tau is the horizon of a fixed one and the two bounds those of
+ * an adaptive one, whose horizon comes with the state, each going unused by the other mode.
  */
 template <std::floating_point T, bool A>
 [[nodiscard]] auto controllerOf(
     const KinematicsModel<T>& model,
     const std::type_identity_t<std::array<T, 4>>& weights = kWeights<T>,
-    [[maybe_unused]] std::type_identity_t<T> tau = kHorizon<T>
+    [[maybe_unused]] std::type_identity_t<T> tau = kHorizon<T>,
+    [[maybe_unused]] std::type_identity_t<T> tau_lower_bound = kTauLowerBound<T>,
+    [[maybe_unused]] std::type_identity_t<T> tau_upper_bound = kTauUpperBound<T>
 ) -> Controller<T, A> {
     if constexpr (A) {
-        return Controller<T, A>{model, std::span<const T, 4>{weights}};
+        return Controller<T, A>{
+            model, std::span<const T, 4>{weights}, tau_lower_bound, tau_upper_bound
+        };
     } else {
         return Controller<T, A>{model, std::span<const T, 4>{weights}, tau};
     }
 }
 
 /**
- * @brief State of either mode. tau is dropped when the horizon is fixed.
+ * @brief State of either mode from the plant state, its heading taken as it is, the two controls
+ * and the horizon, which is dropped when the horizon is fixed.
  */
 template <std::floating_point T, bool A>
-[[nodiscard]] constexpr auto stateOf(
-    std::type_identity_t<T> x, std::type_identity_t<T> y, std::type_identity_t<T> yaw,
-    std::type_identity_t<T> u, std::type_identity_t<T> delta, std::type_identity_t<T> a,
-    std::type_identity_t<T> omega, [[maybe_unused]] std::type_identity_t<T> tau
+[[nodiscard]] constexpr auto stateFrom(
+    const ModelState<T>& plant, std::type_identity_t<T> a, std::type_identity_t<T> omega,
+    [[maybe_unused]] std::type_identity_t<T> tau
 ) noexcept -> State<T, A> {
     if constexpr (A) {
-        return State<T, A>{x, y, yaw, u, delta, a, omega, tau};
+        return State<T, A>{
+            plant.x(), plant.y(), plant.sin_yaw(), plant.cos_yaw(), plant.u(), plant.delta(), a,
+            omega,     tau
+        };
     } else {
-        return State<T, A>{x, y, yaw, u, delta, a, omega};
+        return State<T, A>{
+            plant.x(), plant.y(), plant.sin_yaw(), plant.cos_yaw(), plant.u(), plant.delta(),
+            a,         omega
+        };
     }
 }
 
 /**
- * @brief A target state: the controller ignores the controls and the horizon of a target, so they
- * are left NaN, which any use of them would carry into the result.
+ * @brief State of either mode heading the given yaw. tau is dropped when the horizon is fixed.
  */
 template <std::floating_point T, bool A>
-[[nodiscard]] constexpr auto targetAt(
+[[nodiscard]] auto stateOf(
+    std::type_identity_t<T> x, std::type_identity_t<T> y, std::type_identity_t<T> yaw,
+    std::type_identity_t<T> u, std::type_identity_t<T> delta, std::type_identity_t<T> a,
+    std::type_identity_t<T> omega, std::type_identity_t<T> tau
+) noexcept -> State<T, A> {
+    return stateFrom<T, A>(
+        ModelState<T>{x, y, std::sin(yaw), std::cos(yaw), u, delta}, a, omega, tau
+    );
+}
+
+/**
+ * @brief A target state heading the given yaw: the controller ignores the controls and the horizon
+ * of a target, so they are left NaN, which any use of them would carry into the result.
+ */
+template <std::floating_point T, bool A>
+[[nodiscard]] auto targetAt(
     std::type_identity_t<T> x, std::type_identity_t<T> y, std::type_identity_t<T> yaw,
     std::type_identity_t<T> u, std::type_identity_t<T> delta
 ) noexcept -> State<T, A> {
@@ -224,20 +256,32 @@ template <std::floating_point T, bool A>
     return stateOf<T, A>(x, y, yaw, u, delta, kNaN, kNaN, kNaN);
 }
 
+/**
+ * @brief The target state a state of the model stands for, its heading taken as it is, and the
+ * controls and the horizon left NaN as by targetAt().
+ */
+template <std::floating_point T, bool A>
+[[nodiscard]] constexpr auto targetFrom(const ModelState<T>& plant) noexcept -> State<T, A> {
+    constexpr T kNaN{std::numeric_limits<T>::quiet_NaN()};
+    return stateFrom<T, A>(plant, kNaN, kNaN, kNaN);
+}
+
 template <std::floating_point T, bool A>
 [[nodiscard]] constexpr auto plantOf(const State<T, A>& state) noexcept -> ModelState<T> {
-    return ModelState<T>{state.x(), state.y(), state.yaw(), state.u(), state.delta()};
+    return ModelState<T>{state.x(),       state.y(), state.sin_yaw(),
+                         state.cos_yaw(), state.u(), state.delta()};
 }
 
 /**
- * @brief Horizon the prediction runs over at the given state.
+ * @brief Horizon the prediction runs over at the given state: the one of a fixed controller, or
+ * the one the state carries, clamped into the bounds of an adaptive controller.
  */
 template <std::floating_point T, bool A>
 [[nodiscard]] constexpr auto horizonOf(
     [[maybe_unused]] const Controller<T, A>& controller, [[maybe_unused]] const State<T, A>& state
 ) noexcept -> T {
     if constexpr (A) {
-        return state.tau();
+        return std::clamp(state.tau(), controller.tau_lower_bound(), controller.tau_upper_bound());
     } else {
         return controller.tau();
     }
@@ -256,29 +300,25 @@ template <std::floating_point T, bool A>
 }
 
 /**
- * @brief Smallest magnitude among the rates a tangent gives the controller fields.
+ * @brief Smallest magnitude among the rates a tangent gives the two controls.
  */
 template <std::floating_point T, bool A>
 [[nodiscard]] auto smallestRateOf(const State<T, A>& k) noexcept -> T {
-    if constexpr (A) {
-        return std::min({std::abs(k.a()), std::abs(k.omega()), std::abs(k.tau())});
-    } else {
-        return std::min(std::abs(k.a()), std::abs(k.omega()));
-    }
+    return std::min(std::abs(k.a()), std::abs(k.omega()));
 }
 
 /**
  * @brief A vehicle turning left at speed, with both controls inside the bounds.
  *
- * An adaptive horizon starts off its default of one, so that a horizon that went missing somewhere
- * shows, and long enough that every rate towards targetOf() is large enough for the precondition
- * of SingleStepIntegratorsDriveThePlantThroughTheModel.
+ * An adaptive horizon starts inside its bounds but off both of them, off its default of one and
+ * off kHorizon, so that a horizon that went missing somewhere, or was read from somewhere else,
+ * shows.
  */
 template <std::floating_point T, bool A>
-[[nodiscard]] constexpr auto startOf() noexcept -> State<T, A> {
+[[nodiscard]] auto startOf() noexcept -> State<T, A> {
     return stateOf<T, A>(
         static_cast<T>(0.0), static_cast<T>(0.0), kInitialYaw<T>, static_cast<T>(8.0),
-        static_cast<T>(0.15), static_cast<T>(-0.6), static_cast<T>(0.03), static_cast<T>(0.7)
+        static_cast<T>(0.15), static_cast<T>(-0.6), static_cast<T>(0.03), static_cast<T>(0.18)
     );
 }
 
@@ -287,7 +327,7 @@ template <std::floating_point T, bool A>
  * are far from zero.
  */
 template <std::floating_point T, bool A>
-[[nodiscard]] constexpr auto targetOf() noexcept -> State<T, A> {
+[[nodiscard]] auto targetOf() noexcept -> State<T, A> {
     return targetAt<T, A>(
         static_cast<T>(1.3), static_cast<T>(0.38), static_cast<T>(0.34), static_cast<T>(9.0),
         static_cast<T>(0.3)
@@ -296,19 +336,19 @@ template <std::floating_point T, bool A>
 
 /**
  * @brief Turning left, turning right and reversing, each with both controls inside the bounds and,
- * when adaptive, a horizon well clear of zero.
+ * when adaptive, a horizon inside its bounds.
  */
 template <std::floating_point T, bool A>
-[[nodiscard]] constexpr auto statesOf() noexcept -> std::array<State<T, A>, 3> {
+[[nodiscard]] auto statesOf() noexcept -> std::array<State<T, A>, 3> {
     return {
         startOf<T, A>(),
         stateOf<T, A>(
             static_cast<T>(3.0), static_cast<T>(-2.0), static_cast<T>(-1.1), static_cast<T>(5.0),
-            static_cast<T>(-0.2), static_cast<T>(1.2), static_cast<T>(-0.05), static_cast<T>(0.4)
+            static_cast<T>(-0.2), static_cast<T>(1.2), static_cast<T>(-0.05), static_cast<T>(0.13)
         ),
         stateOf<T, A>(
             static_cast<T>(-1.0), static_cast<T>(4.0), static_cast<T>(2.5), static_cast<T>(-3.0),
-            static_cast<T>(0.1), static_cast<T>(-0.4), static_cast<T>(0.2), static_cast<T>(0.8)
+            static_cast<T>(0.1), static_cast<T>(-0.4), static_cast<T>(0.2), static_cast<T>(0.2)
         )
     };
 }
@@ -346,13 +386,9 @@ template <std::floating_point T, bool A>
     const std::vector<T> ts{waypointTimesOf(duration)};
     std::vector<State<T, A>> waypoints;
     waypoints.reserve(ts.size());
-    ModelState<T> plant{
-        static_cast<T>(0.0), static_cast<T>(0.0), kInitialYaw<T>, static_cast<T>(8.0),
-        static_cast<T>(0.0)
-    };
-    waypoints.push_back(
-        targetAt<T, A>(plant.x(), plant.y(), plant.yaw(), plant.u(), plant.delta())
-    );
+    ModelState<T> plant{static_cast<T>(0.0),      static_cast<T>(0.0), std::sin(kInitialYaw<T>),
+                        std::cos(kInitialYaw<T>), static_cast<T>(8.0), static_cast<T>(0.0)};
+    waypoints.push_back(targetFrom<T, A>(plant));
     for (std::size_t k{0}; k + 1 < ts.size(); ++k) {
         const T span{ts[k + 1] - ts[k]};
         const auto num_steps{static_cast<std::size_t>(std::ceil(span / kH<T>))};
@@ -368,9 +404,7 @@ template <std::floating_point T, bool A>
                 h
             );
         }
-        waypoints.push_back(
-            targetAt<T, A>(plant.x(), plant.y(), plant.yaw(), plant.u(), plant.delta())
-        );
+        waypoints.push_back(targetFrom<T, A>(plant));
     }
     return Reference<T, A>{ts, waypoints};
 }
@@ -418,8 +452,8 @@ template <typename S>
 }
 
 /**
- * @brief Both controls within the bounds and, when adaptive, a positive horizon, which also fails
- * on a NaN.
+ * @brief Both controls within the bounds and, when adaptive, the horizon within the bounds of the
+ * controllers controllerOf() builds by default, which also fails on a NaN.
  */
 template <std::floating_point T, bool A>
 [[nodiscard]] auto isWithinBounds(const State<T, A>& state) noexcept -> bool {
@@ -428,7 +462,7 @@ template <std::floating_point T, bool A>
         state.omega() <= kOmegaUp<T>
     };
     if constexpr (A) {
-        return controls && static_cast<T>(0.0) < state.tau();
+        return controls && kTauLowerBound<T> <= state.tau() && state.tau() <= kTauUpperBound<T>;
     } else {
         return controls;
     }
@@ -498,10 +532,13 @@ template <std::floating_point T, bool A>
 
 /**
  * @brief One classic Runge-Kutta step spelled out through tangent(), the later stages looking ahead
- * over the horizon less stage_times times their stage time.
+ * over the horizon less stage_times times their stage time, its heading normalized and its
+ * controls, and an adaptive horizon, clamped at the end.
  *
  * With stage_times at one it walks the same arithmetic as rungeKutta(), so the two part only by
- * roundoff, and at zero every stage looks ahead over the full horizon.
+ * roundoff, and at zero every stage looks ahead over the full horizon. An adaptive horizon has to
+ * stay inside its bounds over the stages, where shortening it before or after its clamp comes to
+ * the same.
  */
 template <std::floating_point T, bool A>
 [[nodiscard]] auto rungeKuttaThroughTangent(
@@ -530,11 +567,18 @@ template <std::floating_point T, bool A>
     };
     State<T, A> result{state};
     result += k1 * kSixth + k2 * kThird + k3 * kThird + k4 * kSixth;
+    const T norm{std::hypot(result.cos_yaw(), result.sin_yaw())};
+    result.cos_yaw() /= norm;
+    result.sin_yaw() /= norm;
     result.a() =
         std::clamp(result.a(), model.control_lower_bound().a(), model.control_upper_bound().a());
     result.omega() = std::clamp(
         result.omega(), model.control_lower_bound().omega(), model.control_upper_bound().omega()
     );
+    if constexpr (A) {
+        result.tau() =
+            std::clamp(result.tau(), controller.tau_lower_bound(), controller.tau_upper_bound());
+    }
     return result;
 }
 
@@ -588,9 +632,9 @@ template <std::floating_point T, bool A>
  *
  * Step i starts at t_i = i h and is handed as its target the preview point, the reference
  * interpolated between the two waypoints around t_i plus the horizon the step starts with: the
- * horizon of the controller when that is fixed, the one the state carries when it adapts. Every
- * horizon has to lie within [2 h, kMaxPreview]: twice the step keeps it clear of the instability
- * of forwardEuler(), and the reference has to reach kMaxPreview past the last step.
+ * horizon of the controller when that is fixed, the one the state carries, clamped into the bounds
+ * of the controller, when it adapts. No horizon gets past kMaxPreview, so the reference has to
+ * reach that far past the last step.
  */
 template <std::floating_point T, bool A>
 [[nodiscard]] auto marchAlong(
@@ -598,19 +642,13 @@ template <std::floating_point T, bool A>
     const Reference<T, A>& reference, T h, std::size_t num_steps
 ) -> std::vector<State<T, A>> {
     REQUIRE_GE(reference.maxT(), h * static_cast<T>(num_steps) + kMaxPreview<T>);
-    const T shortest_horizon{static_cast<T>(2.0) * h};
     std::vector<State<T, A>> trace;
     trace.reserve(num_steps + 1);
     trace.push_back(initial_state);
     for (std::size_t i{0}; i < num_steps; ++i) {
-        const T horizon{horizonOf(controller, trace.back())};
-        if (!(shortest_horizon <= horizon && horizon <= kMaxPreview<T>)) {
-            FAIL(
-                "step ", i, " starts with a horizon of ", horizon, " s, outside [",
-                shortest_horizon, ", ", kMaxPreview<T>, "] s"
-            );
-        }
-        const State<T, A> preview_point{reference(h * static_cast<T>(i) + horizon)};
+        const State<T, A> preview_point{
+            reference(h * static_cast<T>(i) + horizonOf(controller, trace.back()))
+        };
         trace.push_back(stepWith(mode, controller, trace.back(), preview_point, h));
     }
     return trace;
@@ -679,18 +717,37 @@ template <std::floating_point T, bool A>
 }
 
 /**
- * @brief Plots the path, the five plant fields and the three controller fields of every
- * integrator against time, the path and the plant fields over those of the reference. A fixed
- * horizon shows as a flat line. Every curve keeps its color across the nine subplots, so that one
- * legend across the top of the figure covers them all.
+ * @brief Yaw angles along a run of states, each within pi of the one before, so that a heading
+ * that turns past pi plots as one continuous curve instead of jumping by 2 pi.
+ */
+template <bool A>
+auto unwrappedYawsOf(const std::vector<State<double, A>>& states) -> std::vector<double> {
+    std::vector<double> result;
+    result.reserve(states.size());
+    for (const State<double, A>& state : states) {
+        result.push_back(
+            result.empty() ? state.yaw()
+                           : result.back() +
+                                 std::remainder(state.yaw() - result.back(), 2.0 * std::numbers::pi)
+        );
+    }
+    return result;
+}
+
+/**
+ * @brief Plots the path, the position, the yaw, delta and u of the plant and the three controller
+ * fields of every integrator against time, the path and the plant over the reference. The yaw is
+ * unwrapped along the run (see unwrappedYawsOf()). A fixed horizon shows as a flat line. Every
+ * curve keeps its color across the nine subplots, so that one legend across the top of the figure
+ * covers them all.
  */
 template <bool A>
 auto plotClosedLoop(const std::string& title, const ClosedLoop<double, A>& loop) -> void {
-    std::vector<double> reference_xs, reference_ys, reference_yaws, reference_deltas, reference_us;
+    std::vector<double> reference_xs, reference_ys, reference_deltas, reference_us;
+    const std::vector<double> reference_yaws{unwrappedYawsOf(loop.simultaneous_points)};
     for (const State<double, A>& reference : loop.simultaneous_points) {
         reference_xs.push_back(reference.x());
         reference_ys.push_back(reference.y());
-        reference_yaws.push_back(reference.yaw());
         reference_deltas.push_back(reference.delta());
         reference_us.push_back(reference.u());
     }
@@ -720,11 +777,11 @@ auto plotClosedLoop(const std::string& title, const ClosedLoop<double, A>& loop)
     axes[5]->plot(loop.ts, reference_us, "-")->line_width(2.0).color(reference_color);
     const std::array<const char*, kIntegrateModes.size()> line_specs{":", "--"};
     for (const IntegrateMode mode : kIntegrateModes) {
-        std::vector<double> xs, ys, yaws, deltas, us, accels, omegas, taus;
+        std::vector<double> xs, ys, deltas, us, accels, omegas, taus;
+        const std::vector<double> yaws{unwrappedYawsOf(loop.trace(mode))};
         for (const State<double, A>& state : loop.trace(mode)) {
             xs.push_back(state.x());
             ys.push_back(state.y());
-            yaws.push_back(state.yaw());
             deltas.push_back(state.delta());
             us.push_back(state.u());
             accels.push_back(state.a());
@@ -800,7 +857,10 @@ TEST_CASE_TEMPLATE(
     CHECK_EQ(model.control_upper_bound(), ModelControl<T>{kAUp<T>, kOmegaUp<T>});
     // No two weights agree, so a shuffle cannot pass.
     CHECK(std::ranges::equal(controller.weights(), kWeights<T>));
-    if constexpr (!kAdaptive) {
+    if constexpr (kAdaptive) {
+        CHECK_EQ(controller.tau_lower_bound(), kTauLowerBound<T>);
+        CHECK_EQ(controller.tau_upper_bound(), kTauUpperBound<T>);
+    } else {
         CHECK_EQ(controller.tau(), kHorizon<T>);
     }
 }
@@ -813,9 +873,9 @@ TEST_CASE_TEMPLATE(
     const Controller<T, kAdaptive> controller{controllerOf<T, kAdaptive>(boundedModel<T>())};
     auto [data, in, out] = zpp::bits::data_in_out();
     REQUIRE(out(controller).code == std::errc{});
-    // A default constructed controller has unit weights and a unit, unbounded model, and a fixed
-    // one a unit horizon, none of which agrees with the original, so every field checked below has
-    // to have come through the archive.
+    // A default constructed controller has unit weights and a unit, unbounded model, a fixed one a
+    // unit horizon and an adaptive one no bounds on its horizon, none of which agrees with the
+    // original, so every field checked below has to have come through the archive.
     Controller<T, kAdaptive> restored{};
     REQUIRE(in(restored).code == std::errc{});
     CHECK_EQ(restored.model().front_wheelbase(), kFrontWheelbase<T>);
@@ -823,7 +883,10 @@ TEST_CASE_TEMPLATE(
     CHECK_EQ(restored.model().control_lower_bound(), ModelControl<T>{kALo<T>, kOmegaLo<T>});
     CHECK_EQ(restored.model().control_upper_bound(), ModelControl<T>{kAUp<T>, kOmegaUp<T>});
     CHECK(std::ranges::equal(restored.weights(), kWeights<T>));
-    if constexpr (!kAdaptive) {
+    if constexpr (kAdaptive) {
+        CHECK_EQ(restored.tau_lower_bound(), kTauLowerBound<T>);
+        CHECK_EQ(restored.tau_upper_bound(), kTauUpperBound<T>);
+    } else {
         CHECK_EQ(restored.tau(), kHorizon<T>);
     }
     // Same arithmetic along the same code path, so the restored controller has to reproduce the
@@ -873,11 +936,34 @@ TEST_CASE_TEMPLATE(
         for (std::size_t i{0}; i < State<T, kAdaptive>::size(); ++i) {
             CHECK_EQ(filled[i], static_cast<T>(0.75));
         }
-        // Filled with zero, the horizon included, a state is the zero generic code adds, which the
-        // default state is not once it carries a horizon, as that defaults to one.
+        // Filled with zero, the heading and the horizon included, a state is the zero generic code
+        // adds, which the default state is not, as its heading has cos_yaw = 1 and its horizon,
+        // where it carries one, defaults to one.
         CHECK_EQ(state + State<T, kAdaptive>{static_cast<T>(0.0)}, state);
-        if constexpr (kAdaptive) {
-            CHECK_NE(state + State<T, kAdaptive>{}, state);
+        CHECK_NE(state + State<T, kAdaptive>{}, state);
+    }
+
+    SUBCASE("DefaultIsAtRestHeadingAlongTheXAxis") {
+        const State<T, kAdaptive> standing{};
+        for (std::size_t i{0}; i < State<T, kAdaptive>::size(); ++i) {
+            const bool is_one{i == 3 || (kAdaptive && i + 1 == State<T, kAdaptive>::size())};
+            CHECK_EQ(standing[i], is_one ? static_cast<T>(1.0) : static_cast<T>(0.0));
+        }
+    }
+
+    SUBCASE("YawReadsTheHeadingWhateverItsNorm") {
+        // atan2() covers all four quadrants, and a heading scaled off unit norm, as interpolated
+        // states carry, keeps its yaw.
+        for (const T yaw :
+             {static_cast<T>(-3.0), static_cast<T>(-1.2), static_cast<T>(0.0), static_cast<T>(0.3),
+              static_cast<T>(2.0), static_cast<T>(3.1)}) {
+            State<T, kAdaptive> rotated{state};
+            rotated.cos_yaw() = std::cos(yaw);
+            rotated.sin_yaw() = std::sin(yaw);
+            CHECK_EQ(rotated.yaw(), doctest::Approx(yaw).epsilon(roundoffTolerance<T>()));
+            rotated.cos_yaw() *= static_cast<T>(2.5);
+            rotated.sin_yaw() *= static_cast<T>(2.5);
+            CHECK_EQ(rotated.yaw(), doctest::Approx(yaw).epsilon(roundoffTolerance<T>()));
         }
     }
 }
@@ -888,7 +974,8 @@ TEST_CASE_TEMPLATE(
     // A state is a vector in the sense of VecArithmetic, which is all the piecewise functions and
     // their proxy ask of a value type. Every field below is affine in t, which linear, natural
     // cubic and quintic splines all reproduce exactly, so what is left is the roundoff of the
-    // spline solves.
+    // spline solves. The heading fields are interpolated field by field like the others, which
+    // takes them off unit norm between the samples; tangent() takes such states as they come.
     using T = P::value_type;
     constexpr bool kAdaptive{P::kAdaptive};
     using S = State<T, kAdaptive>;
@@ -909,9 +996,12 @@ TEST_CASE_TEMPLATE(
         static_cast<T>(1.5), static_cast<T>(-2.5), static_cast<T>(0.3), static_cast<T>(7.5),
         static_cast<T>(0.15), static_cast<T>(-0.6), static_cast<T>(0.03), static_cast<T>(0.7)
     )};
-    const S rate{stateOf<T, kAdaptive>(
-        static_cast<T>(7.5), static_cast<T>(1.25), static_cast<T>(-0.4), static_cast<T>(-1.5),
-        static_cast<T>(0.05), static_cast<T>(0.2), static_cast<T>(-0.01), static_cast<T>(0.1)
+    const S rate{stateFrom<T, kAdaptive>(
+        ModelState<T>{
+            static_cast<T>(7.5), static_cast<T>(1.25), static_cast<T>(-0.4), static_cast<T>(0.3),
+            static_cast<T>(-1.5), static_cast<T>(0.05)
+        },
+        static_cast<T>(0.2), static_cast<T>(-0.01), static_cast<T>(0.1)
     )};
     const auto exact = [&](T t) -> S { return origin + rate * t; };
     // Unevenly spaced, so that no spline solve gets to lean on equal intervals.
@@ -1000,8 +1090,10 @@ TEST_CASE_TEMPLATE(
     AdaptiveDouble
 ) {
     // cost() and the rates share their residuals, so the residuals are spelled out here once more,
-    // straight from the formulas documented with KinematicsFlowController::tangent(). The two sides
-    // arrange the arithmetic differently and round differently.
+    // straight from the formulas documented with KinematicsFlowController::tangent(), the heading
+    // in std::complex. The two sides arrange the arithmetic differently and round differently. A
+    // heading scaled off unit norm is taken as it comes, by the position terms as well as by its
+    // own residual.
     using T = P::value_type;
     constexpr bool kAdaptive{P::kAdaptive};
     const Controller<T, kAdaptive> controller{controllerOf<T, kAdaptive>(boundedModel<T>())};
@@ -1010,10 +1102,19 @@ TEST_CASE_TEMPLATE(
     const T lr{kRearWheelbase<T>};
     const T kTwo{static_cast<T>(2.0)};
     const T kSix{static_cast<T>(6.0)};
+    const std::complex<T> i{static_cast<T>(0.0), static_cast<T>(1.0)};
+    std::vector<State<T, kAdaptive>> states;
     for (const State<T, kAdaptive>& state : statesOf<T, kAdaptive>()) {
+        State<T, kAdaptive> scaled{state};
+        scaled.cos_yaw() *= static_cast<T>(1.3);
+        scaled.sin_yaw() *= static_cast<T>(1.3);
+        states.push_back(state);
+        states.push_back(scaled);
+    }
+    for (const State<T, kAdaptive>& state : states) {
         const T tau{horizonOf(controller, state)};
-        const T s{std::sin(state.yaw())};
-        const T c{std::cos(state.yaw())};
+        const T s{state.sin_yaw()};
+        const T c{state.cos_yaw()};
         const T tan_delta{std::tan(state.delta())};
         const T sec2_delta{
             static_cast<T>(1.0) / (std::cos(state.delta()) * std::cos(state.delta()))
@@ -1036,11 +1137,15 @@ TEST_CASE_TEMPLATE(
                 (-r * r * (state.u() * s + v * c) + kTwo * r * (state.a() * c - v_dot * s) +
                  r_dot * (state.u() * c - v * s))
         };
-        const T ryaw{state.yaw() - target.yaw() + tau * r + tau * tau / kTwo * r_dot};
+        const std::complex<T> z{state.cos_yaw(), state.sin_yaw()};
+        const std::complex<T> rz{
+            z - std::complex<T>{target.cos_yaw(), target.sin_yaw()} + tau * r * i * z +
+            tau * tau / kTwo * (r_dot * i - r * r) * z
+        };
         const T ru{state.u() + tau * state.a() - target.u()};
         const T rdelta{state.delta() + tau * state.omega() - target.delta()};
         const T expected{
-            (kWeights<T>[0] * (rx * rx + ry * ry) / (L * L) + kWeights<T>[1] * ryaw * ryaw +
+            (kWeights<T>[0] * (rx * rx + ry * ry) / (L * L) + kWeights<T>[1] * std::norm(rz) +
              kWeights<T>[2] * (tau * ru / L) * (tau * ru / L) + kWeights<T>[3] * rdelta * rdelta) /
             kTwo
         };
@@ -1058,11 +1163,12 @@ TEST_CASE_TEMPLATE(
     // Along a straight line under a constant acceleration the vehicle moves by a polynomial of
     // degree two in time, which the prediction takes in exactly, so every residual against where
     // the vehicle gets to vanishes. A target a centimetre off sets the scale the cost is held to.
+    // An adaptive horizon is pinned to kTau by bounds that coincide.
     using T = P::value_type;
     constexpr bool kAdaptive{P::kAdaptive};
     constexpr T kTau{static_cast<T>(0.6)};
     const Controller<T, kAdaptive> controller{
-        controllerOf<T, kAdaptive>(unboundedModel<T>(), kWeights<T>, kTau)
+        controllerOf<T, kAdaptive>(unboundedModel<T>(), kWeights<T>, kTau, kTau, kTau)
     };
     const T x{static_cast<T>(1.0)};
     const T y{static_cast<T>(-0.5)};
@@ -1091,7 +1197,7 @@ TEST_CASE_TEMPLATE(
     // With both controls at zero the prediction is exact through tau^3, so along a constant turn
     // the position residual against where the vehicle gets to is of fourth order in the horizon:
     // halving the horizon divides it by sixteen. Only the position is weighed, so the cost is half
-    // that residual squared over L^2.
+    // that residual squared over L^2. An adaptive horizon is pinned to tau by bounds that coincide.
     using T = P::value_type;
     constexpr bool kAdaptive{P::kAdaptive};
     const KinematicsModel<T> model{unboundedModel<T>()};
@@ -1105,7 +1211,7 @@ TEST_CASE_TEMPLATE(
     const T v{kRearWheelbase<T> * r};
     const auto residual = [&](T tau) -> T {
         const Controller<T, kAdaptive> controller{
-            controllerOf<T, kAdaptive>(model, position_only, tau)
+            controllerOf<T, kAdaptive>(model, position_only, tau, tau, tau)
         };
         const State<T, kAdaptive> state{stateOf<T, kAdaptive>(
             static_cast<T>(0.0), static_cast<T>(0.0), yaw, u, delta, static_cast<T>(0.0),
@@ -1125,6 +1231,49 @@ TEST_CASE_TEMPLATE(
 }
 
 TEST_CASE_TEMPLATE(
+    "HeadingPredictionErrorIsOfThirdOrderOnAConstantTurn", P, FixedFloat, AdaptiveFloat,
+    FixedDouble, AdaptiveDouble
+) {
+    // The heading is predicted to tau^2 alone, so along a constant turn its residual against the
+    // heading the vehicle gets to is of third order in the horizon, about (tau r)^3 / 6: halving
+    // the horizon divides it by eight. Only the heading is weighed, so the cost is half that
+    // residual squared. An adaptive horizon is pinned to tau by bounds that coincide.
+    using T = P::value_type;
+    constexpr bool kAdaptive{P::kAdaptive};
+    const KinematicsModel<T> model{unboundedModel<T>()};
+    const std::array<T, 4> heading_only{
+        static_cast<T>(0.0), static_cast<T>(1.0), static_cast<T>(0.0), static_cast<T>(0.0)
+    };
+    const T yaw{static_cast<T>(0.3)};
+    const T delta{static_cast<T>(0.12)};
+    const T u{static_cast<T>(8.0)};
+    const T r{u * std::tan(delta) / kWheelbase<T>};
+    const auto residual = [&](T tau) -> T {
+        const Controller<T, kAdaptive> controller{
+            controllerOf<T, kAdaptive>(model, heading_only, tau, tau, tau)
+        };
+        const State<T, kAdaptive> state{stateOf<T, kAdaptive>(
+            static_cast<T>(0.0), static_cast<T>(0.0), yaw, u, delta, static_cast<T>(0.0),
+            static_cast<T>(0.0), tau
+        )};
+        const State<T, kAdaptive> target{targetAt<T, kAdaptive>(
+            static_cast<T>(0.0), static_cast<T>(0.0), yaw + r * tau, u, delta
+        )};
+        return std::sqrt(static_cast<T>(2.0) * controller.cost(state, target));
+    };
+    const T coarse_tau{static_cast<T>(0.8)};
+    const T coarse{residual(coarse_tau)};
+    CHECK_EQ(
+        coarse,
+        doctest::Approx(r * r * r * coarse_tau * coarse_tau * coarse_tau / static_cast<T>(6.0))
+            .epsilon(0.01)
+    );
+    const T ratio{coarse / residual(coarse_tau * static_cast<T>(0.5))};
+    CHECK_GT(ratio, static_cast<T>(7.5));
+    CHECK_LT(ratio, static_cast<T>(8.5));
+}
+
+TEST_CASE_TEMPLATE(
     "RatesAreThePreconditionedNegativeGradientOfTheCost", P, FixedFloat, AdaptiveFloat, FixedDouble,
     AdaptiveDouble
 ) {
@@ -1133,7 +1282,8 @@ TEST_CASE_TEMPLATE(
     // form, while the finite differences recover those of cost() up to rounding, so a slip in the
     // closed forms shows here. The acceleration enters the residuals only through powers of tau,
     // so the cost hardly moves with it and its step has to be all the wider. The model is
-    // unbounded, so no clamp cuts into the differences.
+    // unbounded, so no clamp cuts into the differences, and the horizons of statesOf() lie far
+    // enough inside their bounds that none cuts into the widest shift of the horizon either.
     using T = P::value_type;
     constexpr bool kAdaptive{P::kAdaptive};
     const Controller<T, kAdaptive> controller{controllerOf<T, kAdaptive>(unboundedModel<T>())};
@@ -1144,7 +1294,7 @@ TEST_CASE_TEMPLATE(
     const T wheelbase2{kWheelbase<T> * kWheelbase<T>};
     constexpr T kAStep{static_cast<T>(10.0)};
     constexpr T kOmegaStep{static_cast<T>(1.0)};
-    constexpr T kTauStep{static_cast<T>(0.05)};
+    constexpr T kTauStep{static_cast<T>(0.005)};
     const double tolerance{derivativeTolerance<T>()};
     for (const State<T, kAdaptive>& state : statesOf<T, kAdaptive>()) {
         const T tau{horizonOf(controller, state)};
@@ -1273,9 +1423,10 @@ TEST_CASE_TEMPLATE(
     "CostAndRatesAreInvariantUnderRigidMotions", P, FixedFloat, AdaptiveFloat, FixedDouble,
     AdaptiveDouble
 ) {
-    // One weight covers x and y together, so turning the state and the target together about the
-    // origin and shifting them together moves neither the cost nor the rates of the controller
-    // fields.
+    // One weight covers x and y together, and one both fields of the heading, so turning the state
+    // and the target together about the origin and shifting them together moves neither the cost
+    // nor the rates of the controller fields. The turn multiplies both headings by the same unit
+    // complex number.
     using T = P::value_type;
     constexpr bool kAdaptive{P::kAdaptive};
     const Controller<T, kAdaptive> controller{controllerOf<T, kAdaptive>(boundedModel<T>())};
@@ -1286,9 +1437,12 @@ TEST_CASE_TEMPLATE(
     const auto moved = [&](State<T, kAdaptive> state) -> State<T, kAdaptive> {
         const T x{std::cos(angle) * state.x() - std::sin(angle) * state.y() + shift_x};
         const T y{std::sin(angle) * state.x() + std::cos(angle) * state.y() + shift_y};
+        const T cos_yaw{std::cos(angle) * state.cos_yaw() - std::sin(angle) * state.sin_yaw()};
+        const T sin_yaw{std::sin(angle) * state.cos_yaw() + std::cos(angle) * state.sin_yaw()};
         state.x() = x;
         state.y() = y;
-        state.yaw() += angle;
+        state.sin_yaw() = sin_yaw;
+        state.cos_yaw() = cos_yaw;
         return state;
     };
     const double tolerance{derivativeTolerance<T>()};
@@ -1308,6 +1462,61 @@ TEST_CASE_TEMPLATE(
 }
 
 TEST_CASE_TEMPLATE(
+    "HeadingsMeetTheShortWayAcrossPi", P, FixedFloat, AdaptiveFloat, FixedDouble, AdaptiveDouble
+) {
+    // A heading carries no winding: a target heading a little past pi, whose yaw wraps round to a
+    // little above -pi, lies a little to the left of a vehicle heading a little short of pi, and
+    // the controller sees it there. Weighing the heading alone, the cost is that of the same pair
+    // of headings turned back by pi, which come nowhere near the wrap, and the steering rate turns
+    // the vehicle left, the short way round, as it does for the turned pair. Driving straight with
+    // both controls at zero, nothing but the two headings enters the cost.
+    using T = P::value_type;
+    constexpr bool kAdaptive{P::kAdaptive};
+    const std::array<T, 4> heading_only{
+        static_cast<T>(0.0), static_cast<T>(1.0), static_cast<T>(0.0), static_cast<T>(0.0)
+    };
+    const Controller<T, kAdaptive> controller{
+        controllerOf<T, kAdaptive>(unboundedModel<T>(), heading_only)
+    };
+    const T pi{std::numbers::pi_v<T>};
+    const T gap{static_cast<T>(0.1)};
+    const T u{static_cast<T>(8.0)};
+    const auto pair_at = [&](T state_yaw,
+                             T target_yaw) -> std::pair<State<T, kAdaptive>, State<T, kAdaptive>> {
+        return {
+            stateOf<T, kAdaptive>(
+                static_cast<T>(0.0), static_cast<T>(0.0), state_yaw, u, static_cast<T>(0.0),
+                static_cast<T>(0.0), static_cast<T>(0.0), kHorizon<T>
+            ),
+            targetAt<T, kAdaptive>(
+                static_cast<T>(0.0), static_cast<T>(0.0), target_yaw, u, static_cast<T>(0.0)
+            )
+        };
+    };
+    const auto [state, target] = pair_at(pi - gap, -pi + gap);
+    const auto [turned_state, turned_target] = pair_at(-gap, gap);
+    REQUIRE_GT(target.yaw(), -pi);
+    REQUIRE_LT(target.yaw(), -pi + static_cast<T>(2.0) * gap);
+    const double tolerance{derivativeTolerance<T>()};
+    // The headings lie 2 gap apart, whose chord is 2 sin(gap).
+    const T chord{static_cast<T>(2.0) * std::sin(gap)};
+    CHECK_EQ(
+        controller.cost(state, target),
+        doctest::Approx(chord * chord / static_cast<T>(2.0)).epsilon(tolerance)
+    );
+    CHECK_EQ(
+        controller.cost(state, target),
+        doctest::Approx(controller.cost(turned_state, turned_target)).epsilon(tolerance)
+    );
+    const State<T, kAdaptive> k{controller.tangent(state, target)};
+    CHECK_GT(k.omega(), static_cast<T>(0.0));
+    CHECK_EQ(
+        k.omega(),
+        doctest::Approx(controller.tangent(turned_state, turned_target).omega()).epsilon(tolerance)
+    );
+}
+
+TEST_CASE_TEMPLATE(
     "SingleStepIntegratorsDriveThePlantThroughTheModel", P, FixedFloat, AdaptiveFloat, FixedDouble,
     AdaptiveDouble
 ) {
@@ -1323,12 +1532,17 @@ TEST_CASE_TEMPLATE(
     // The comparisons below hold the integrators to a tolerance, so the rates at this start have to
     // be large enough that holding a controller field still over a step, or stepping the plant
     // under the updated controls instead of the held ones, lands far outside it. The latter moves
-    // delta and u by h^2 times a rate.
+    // delta and u by h^2 times the rate of a control. An adaptive horizon drives no plant field
+    // within the step, so only holding it still matters, which moves it by h times its rate.
     REQUIRE_GT(h * h * smallestRateOf(k), static_cast<T>(10.0) * tolerance);
+    if constexpr (kAdaptive) {
+        REQUIRE_GT(h * std::abs(k.tau()), static_cast<T>(10.0) * tolerance * start.tau());
+    }
 
     SUBCASE("ForwardEulerPlantFieldsFollowTheModel") {
         // The plant half of a forward Euler step is the model's own step under the controls the
-        // step starts with, so the five plant fields have to land where the model puts them.
+        // step starts with, its heading normalized as there, so the six plant fields have to land
+        // where the model puts them.
         CHECK_LE(
             distanceOf(
                 plantOf(controller.forwardEuler(start, target, h)),
@@ -1340,7 +1554,7 @@ TEST_CASE_TEMPLATE(
 
     SUBCASE("ForwardEulerControllerFieldsStepAlongTheRates") {
         // The controller fields take one Euler step along the rates tangent() gives at the start
-        // of the step.
+        // of the step, clamped into their bounds.
         const State<T, kAdaptive> stepped{controller.forwardEuler(start, target, h)};
         CHECK_EQ(
             stepped.a(),
@@ -1352,7 +1566,13 @@ TEST_CASE_TEMPLATE(
                 .epsilon(tolerance)
         );
         if constexpr (kAdaptive) {
-            CHECK_EQ(stepped.tau(), doctest::Approx(start.tau() + k.tau() * h).epsilon(tolerance));
+            CHECK_EQ(
+                stepped.tau(),
+                doctest::Approx(
+                    std::clamp(start.tau() + k.tau() * h, kTauLowerBound<T>, kTauUpperBound<T>)
+                )
+                    .epsilon(tolerance)
+            );
         }
     }
 
@@ -1525,17 +1745,17 @@ TEST_CASE_TEMPLATE(
     SUBCASE("FromOffTheReference") {
         // The vehicle starts off the reference by enough to drive its controls into the bounds.
         // The loop then stays within 20 cm of the simultaneous points with a fixed horizon and
-        // within 30 cm with an adaptive one, for every integrator. Previewing the horizon the
+        // within 8 cm with an adaptive one, for every integrator. Previewing the horizon the
         // state carries keeps an adaptive horizon from taking up the along track offset (see
-        // KinematicsFlowController::tangent()), but leaves nothing to pin the horizon, which
-        // settles wherever the along track lag or lead of the integrator leaves it: past 20
-        // seconds at about half a second under forward Euler and between 0.27 and 0.36 seconds
-        // under Runge-Kutta.
+        // KinematicsFlowController::tangent()), but leaves nothing to pin the horizon but its
+        // bounds: it climbs while the offset closes and settles wherever the along track lag or
+        // lead of the integrator leaves it, past 20 seconds on its upper bound under forward Euler
+        // and between 0.18 and 0.21 seconds under Runge-Kutta.
         const State<T, kAdaptive> start{stateOf<T, kAdaptive>(
             static_cast<T>(1.5), static_cast<T>(-2.0), static_cast<T>(0.1), static_cast<T>(5.0),
             static_cast<T>(0.0), static_cast<T>(0.0), static_cast<T>(0.0), kHorizon<T>
         )};
-        const T settled_distance{kAdaptive ? static_cast<T>(0.3) : static_cast<T>(0.2)};
+        const T settled_distance{kAdaptive ? static_cast<T>(0.08) : static_cast<T>(0.2)};
         const ClosedLoop<T, kAdaptive> loop{
             runClosedLoop(controller, start, reference, h, kNumSteps)
         };
@@ -1566,9 +1786,8 @@ TEST_CASE_TEMPLATE(
         // the corner of the path they were taken off by up to some 3 cm, and it kinks at every
         // waypoint, neither of which the vehicle can follow exactly.
         const State<T, kAdaptive>& on{reference.ys().front()};
-        const State<T, kAdaptive> start{stateOf<T, kAdaptive>(
-            on.x(), on.y(), on.yaw(), on.u(), on.delta(), static_cast<T>(0.0), static_cast<T>(0.12),
-            kHorizon<T>
+        const State<T, kAdaptive> start{stateFrom<T, kAdaptive>(
+            plantOf(on), static_cast<T>(0.0), static_cast<T>(0.12), kHorizon<T>
         )};
         const T settled_distance{static_cast<T>(0.05)};
         const ClosedLoop<T, kAdaptive> loop{
@@ -1614,13 +1833,8 @@ TEST_CASE_TEMPLATE("StabilityBoundOfTheForwardEulerStep", T, float, double) {
     const auto envelope = [&](IntegrateMode mode, T tau) -> T {
         const Controller<T, false> controller{model, std::span<const T, 4>{weights}, tau};
         State<T, false> state{
-            kOffset,
-            static_cast<T>(0.0),
-            static_cast<T>(0.0),
-            kSpeed,
-            static_cast<T>(0.0),
-            static_cast<T>(0.0),
-            static_cast<T>(0.0)
+            kOffset, static_cast<T>(0.0), static_cast<T>(0.0), static_cast<T>(1.0),
+            kSpeed,  static_cast<T>(0.0), static_cast<T>(0.0), static_cast<T>(0.0)
         };
         T result{static_cast<T>(0.0)};
         for (std::size_t i{0}; i < kNumSteps; ++i) {
@@ -1660,13 +1874,15 @@ TEST_CASE_TEMPLATE("AdaptiveMatchesTheFixedHorizonControllerAtItsHorizon", T, fl
     const KinematicsModel<T> model{boundedModel<T>()};
     const Controller<T, true> adaptive{controllerOf<T, true>(model)};
     const State<T, true> target{targetOf<T, true>()};
-    const State<T, false> fixed_target{target.x(),     target.y(), target.yaw(),  target.u(),
-                                       target.delta(), target.a(), target.omega()};
+    const State<T, false> fixed_target{target.x(),       target.y(),    target.sin_yaw(),
+                                       target.cos_yaw(), target.u(),    target.delta(),
+                                       target.a(),       target.omega()};
     const T tolerance{roundoffTolerance<T>()};
     for (const State<T, true>& state : statesOf<T, true>()) {
         const Controller<T, false> fixed{controllerOf<T, false>(model, kWeights<T>, state.tau())};
-        const State<T, false> fixed_state{state.x(),     state.y(), state.yaw(),  state.u(),
-                                          state.delta(), state.a(), state.omega()};
+        const State<T, false> fixed_state{state.x(),       state.y(),    state.sin_yaw(),
+                                          state.cos_yaw(), state.u(),    state.delta(),
+                                          state.a(),       state.omega()};
         const State<T, false> expected{fixed.tangent(fixed_state, fixed_target)};
         const State<T, true> k{adaptive.tangent(state, target)};
         CHECK_EQ(plantOf(k), plantOf(expected));
@@ -1685,24 +1901,77 @@ TEST_CASE_TEMPLATE("AdaptiveAlongTrackOffsetsCostNothing", T, float, double) {
     // KinematicsFlowController::tangent()). The cost vanishes there, and since it never drops below
     // zero, so does its gradient, which leaves the three rates nothing to descend: the horizon
     // takes up an along track offset instead of the loop closing it. The cost is measured against
-    // the one at a horizon a fifth off, which is required to be positive, or the check could not
-    // tell that horizon apart from any other.
+    // the one at a horizon a fifth longer, still within the bounds, which is required to be
+    // positive, or the check could not tell that horizon apart from any other.
     const Controller<T, true> controller{controllerOf<T, true>(boundedModel<T>())};
     const T yaw{kInitialYaw<T>};
     const T u{static_cast<T>(8.0)};
-    for (const T distance : {static_cast<T>(0.5), static_cast<T>(2.0), static_cast<T>(6.0)}) {
+    for (const T distance : {static_cast<T>(0.9), static_cast<T>(1.2), static_cast<T>(1.4)}) {
         const State<T, true> target{targetAt<T, true>(
             distance * std::cos(yaw), distance * std::sin(yaw), yaw, u, static_cast<T>(0.0)
         )};
-        const State<T, true> state{
-            static_cast<T>(0.0), static_cast<T>(0.0), yaw,         u, static_cast<T>(0.0),
+        const State<T, true> state{stateOf<T, true>(
+            static_cast<T>(0.0), static_cast<T>(0.0), yaw, u, static_cast<T>(0.0),
             static_cast<T>(0.0), static_cast<T>(0.0), distance / u
-        };
+        )};
         State<T, true> off{state};
         off.tau() *= static_cast<T>(1.2);
+        REQUIRE_LE(off.tau(), kTauUpperBound<T>);
         const T off_cost{controller.cost(off, target)};
         REQUIRE_GT(off_cost, static_cast<T>(0.0));
         CHECK_LE(controller.cost(state, target), roundoffTolerance<T>() * off_cost);
+    }
+}
+
+TEST_CASE_TEMPLATE("HorizonStaysWithinItsBounds", T, float, double) {
+    const Controller<T, true> controller{controllerOf<T, true>(boundedModel<T>())};
+    const State<T, true> start{startOf<T, true>()};
+    const T h{kH<T>};
+
+    SUBCASE("LooseHorizonChangesNothing") {
+        // The horizon of a state enters the flow and the cost only through its bounds, so a
+        // horizon beyond them may not move a single bit of either.
+        const State<T, true> target{targetOf<T, true>()};
+        for (const auto& [loose, bound] :
+             {std::pair{static_cast<T>(0.7), kTauUpperBound<T>},
+              std::pair{static_cast<T>(0.05), kTauLowerBound<T>}}) {
+            CHECK_EQ(
+                controller.tangent(withHorizon(start, loose), target),
+                controller.tangent(withHorizon(start, bound), target)
+            );
+            CHECK_EQ(
+                controller.cost(withHorizon(start, loose), target),
+                controller.cost(withHorizon(start, bound), target)
+            );
+        }
+    }
+
+    SUBCASE("IntegratorsClampTheHorizon") {
+        // Towards a target about a metre behind the vehicle the horizon falls, and towards a target
+        // far out of reach it climbs, so a single unclamped step from the bound it heads for
+        // overshoots that bound, and the clamp at the end of every integrator is all that keeps the
+        // horizon in. The overshoot is required first, or the checks below would hold trivially.
+        const State<T, true> behind{targetAt<T, true>(
+            static_cast<T>(-1.0), static_cast<T>(-0.3), kInitialYaw<T>, static_cast<T>(8.0),
+            static_cast<T>(0.15)
+        )};
+        const State<T, true> distant{targetAt<T, true>(
+            static_cast<T>(40.0), static_cast<T>(-30.0), static_cast<T>(-1.0), static_cast<T>(30.0),
+            static_cast<T>(-0.4)
+        )};
+        const State<T, true> at_lower{withHorizon(start, kTauLowerBound<T>)};
+        const State<T, true> at_upper{withHorizon(start, kTauUpperBound<T>)};
+        REQUIRE_LT(
+            at_lower.tau() + controller.tangent(at_lower, behind).tau() * h, kTauLowerBound<T>
+        );
+        REQUIRE_GT(
+            at_upper.tau() + controller.tangent(at_upper, distant).tau() * h, kTauUpperBound<T>
+        );
+        for (const IntegrateMode mode : kIntegrateModes) {
+            CAPTURE(mode);
+            CHECK(isWithinBounds(stepWith(mode, controller, at_lower, behind, h)));
+            CHECK(isWithinBounds(stepWith(mode, controller, at_upper, distant, h)));
+        }
     }
 }
 
@@ -1735,6 +2004,23 @@ TEST_CASE_TEMPLATE(
         }
     }
 
+    SUBCASE("HeadingOffUnitNorm") {
+        // tangent() and cost() take a heading off unit norm as it comes, as the stages of
+        // rungeKutta() need, but a step has to start from a unit one. Nothing checks the heading
+        // before it reaches an integrator.
+        State<T, kAdaptive> state{start};
+        state.cos_yaw() *= static_cast<T>(1.1);
+        state.sin_yaw() *= static_cast<T>(1.1);
+        CHECK_NOTHROW(static_cast<void>(controller.tangent(state, target)));
+        CHECK_NOTHROW(static_cast<void>(controller.cost(state, target)));
+        for (const IntegrateMode mode : kIntegrateModes) {
+            CHECK_THROWS_AS(
+                static_cast<void>(stepWith(mode, controller, state, target, kH<T>)),
+                std::invalid_argument
+            );
+        }
+    }
+
     SUBCASE("NonPositiveTimeStep") {
         for (const IntegrateMode mode : kIntegrateModes) {
             for (const T h : {static_cast<T>(0.0), static_cast<T>(-0.01)}) {
@@ -1749,11 +2035,12 @@ TEST_CASE_TEMPLATE(
     SUBCASE("HorizonHasToOutlastTheStep") {
         // A forward Euler step is fine with a horizon that spans exactly the step, while the last
         // stage of rungeKutta() looks ahead over the horizon less the step, which has to stay
-        // positive for the target to lie ahead of that stage, so it needs strictly more.
+        // positive for the target to lie ahead of that stage, so it needs strictly more. An
+        // adaptive horizon is pinned to tau by bounds that coincide.
         const T h{kH<T>};
         const auto step_over = [&](IntegrateMode mode, T tau) -> State<T, kAdaptive> {
             const Controller<T, kAdaptive> horizon_controller{
-                controllerOf<T, kAdaptive>(model, kWeights<T>, tau)
+                controllerOf<T, kAdaptive>(model, kWeights<T>, tau, tau, tau)
             };
             return stepWith(mode, horizon_controller, withHorizon(start, tau), target, h);
         };
@@ -1770,23 +2057,55 @@ TEST_CASE_TEMPLATE(
         );
     }
 
-    SUBCASE("NonPositiveHorizon") {
-        // A fixed horizon is checked once, when the controller is built, an adaptive one wherever
-        // a state is handed in.
-        for (const T tau : {static_cast<T>(0.0), -kH<T>, std::numeric_limits<T>::quiet_NaN()}) {
-            if constexpr (kAdaptive) {
-                State<T, kAdaptive> state{start};
-                state.tau() = tau;
+    SUBCASE("ControllerRejectsAnInvalidHorizon") {
+        // A fixed horizon is checked once, when the controller is built, and has to be positive.
+        // The bounds of an adaptive one have to be ordered and the lower one not negative, while
+        // infinity above and zero below are fine.
+        constexpr T kNaN{std::numeric_limits<T>::quiet_NaN()};
+        if constexpr (kAdaptive) {
+            for (const auto& [lower, upper] :
+                 {std::pair{-kH<T>, kTauUpperBound<T>},
+                  std::pair{kTauUpperBound<T>, kTauLowerBound<T>},
+                  std::pair{kNaN, kTauUpperBound<T>}, std::pair{kTauLowerBound<T>, kNaN}}) {
                 CHECK_THROWS_AS(
-                    static_cast<void>(controller.tangent(state, target)), std::invalid_argument
+                    static_cast<void>(
+                        controllerOf<T, kAdaptive>(model, kWeights<T>, kHorizon<T>, lower, upper)
+                    ),
+                    std::invalid_argument
                 );
-                CHECK_THROWS_AS(
-                    static_cast<void>(controller.cost(state, target)), std::invalid_argument
-                );
-            } else {
+            }
+            CHECK_NOTHROW(
+                static_cast<void>(controllerOf<T, kAdaptive>(
+                    model, kWeights<T>, kHorizon<T>, static_cast<T>(0.0),
+                    std::numeric_limits<T>::infinity()
+                ))
+            );
+        } else {
+            for (const T tau : {static_cast<T>(0.0), -kH<T>, kNaN}) {
                 CHECK_THROWS_AS(
                     static_cast<void>(controllerOf<T, kAdaptive>(model, kWeights<T>, tau)),
                     std::invalid_argument
+                );
+            }
+        }
+    }
+
+    SUBCASE("AdaptiveHorizonHasToBePositive") {
+        // An adaptive horizon is checked wherever a state is handed in: bounds that let it sink to
+        // zero leave tangent() and cost() to reject a state whose horizon got there, or never was
+        // a number.
+        if constexpr (kAdaptive) {
+            const Controller<T, kAdaptive> unbounded{controllerOf<T, kAdaptive>(
+                model, kWeights<T>, kHorizon<T>, static_cast<T>(0.0),
+                std::numeric_limits<T>::infinity()
+            )};
+            for (const T tau : {static_cast<T>(0.0), -kH<T>, std::numeric_limits<T>::quiet_NaN()}) {
+                const State<T, kAdaptive> state{withHorizon(start, tau)};
+                CHECK_THROWS_AS(
+                    static_cast<void>(unbounded.tangent(state, target)), std::invalid_argument
+                );
+                CHECK_THROWS_AS(
+                    static_cast<void>(unbounded.cost(state, target)), std::invalid_argument
                 );
             }
         }
@@ -1818,6 +2137,7 @@ auto main(int argc, const char* argv[]) -> int {
     cxxopts::Options options(
         "kinematics_flow_controller_test", "unit test of KinematicsFlowController class"
     );
+    options.allow_unrecognised_options(); // doctest reads its own flags from argv below
     options.add_options()(
         "plot-graph", "plot test graph", cxxopts::value<bool>()->default_value("false")
     );

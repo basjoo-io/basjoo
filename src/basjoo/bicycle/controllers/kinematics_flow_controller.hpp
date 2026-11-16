@@ -38,11 +38,17 @@ namespace basjoo::bicycle {
  * @brief Plant state of KinematicsModel together with the two controls driving it and, when
  * Adaptive is true, the horizon they are steered over.
  *
- * x, y, yaw, u and delta are the plant state, a is the longitudinal acceleration du/dt and omega is
- * the steering rate d(delta)/dt. tau, present only when Adaptive is true, is the horizon of the
- * prediction the controls are steered by (see KinematicsFlowController::tangent()). The controls,
- * and the horizon where there is one, evolve over time alongside the plant, which is what makes
- * this a controller rather than a model.
+ * x, y, sin_yaw, cos_yaw, u and delta are the plant state, the fields of KinematicsModelState in
+ * its order, a is the longitudinal acceleration du/dt and omega is the steering rate d(delta)/dt.
+ * tau, present only when Adaptive is true, is the horizon of the prediction the controls are
+ * steered by (see KinematicsFlowController::tangent()). The controls, and the horizon where there
+ * is one, evolve over time alongside the plant, which is what makes this a controller rather than a
+ * model.
+ *
+ * The fields are stored flat, so that the state is a vector in the sense of VecArithmetic and the
+ * integrators and the piecewise functions combine it field by field. Default construction gives
+ * the default plant state, at rest at the origin heading along the x axis of the world frame, with
+ * both controls zero and, where there is one, a horizon of one.
  */
 template <std::floating_point T, bool Adaptive = false>
 class KinematicsFlowControllerState;
@@ -58,134 +64,26 @@ class KinematicsFlowControllerState<T, false> final : public ::basjoo::math::Den
     using size_type = std::size_t;
     using index_type = std::size_t;
     using rank_type = std::size_t;
-    using extents_type = std::extents<index_type, 7>;
-    using pointer = value_type*;
-    using const_pointer = const value_type*;
-
-    constexpr KinematicsFlowControllerState() noexcept = default;
-
-    // Every field set to v. Generic code builds the zero of a value type as value_type{0.0}.
-    constexpr explicit KinematicsFlowControllerState(value_type v) noexcept
-        : m_data{v, v, v, v, v, v, v} {}
-
-    constexpr KinematicsFlowControllerState(
-        value_type x, value_type y, value_type yaw, value_type u, value_type delta, value_type a,
-        value_type omega
-    ) noexcept
-        : m_data{x, y, yaw, u, delta, a, omega} {}
-
-    [[using gnu: const, always_inline, leaf]]
-    static constexpr auto rank() noexcept -> rank_type {
-        return 1;
-    }
-
-    [[using gnu: const, always_inline, leaf]]
-    static constexpr auto extent([[maybe_unused]] rank_type r) noexcept -> index_type {
-        return size();
-    }
-
-    [[using gnu: const, always_inline, leaf]]
-    static constexpr auto size() noexcept -> size_type {
-        return 7;
-    }
-
-    [[using gnu: pure, always_inline]]
-    constexpr auto data() noexcept -> pointer {
-        return m_data.data();
-    }
-
-    [[using gnu: pure, always_inline]]
-    constexpr auto data() const noexcept -> const_pointer {
-        return m_data.data();
-    }
-
-    [[using gnu: pure, always_inline]]
-    constexpr auto operator[](index_type i) noexcept -> value_type& {
-        return data()[i];
-    }
-
-    [[using gnu: pure, always_inline]]
-    constexpr auto operator[](index_type i) const noexcept -> const value_type& {
-        return data()[i];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto x(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[0];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto y(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[1];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto yaw(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[2];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto u(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[3];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto delta(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[4];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto a(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[5];
-    }
-
-    template <typename Self>
-    [[using gnu: pure, always_inline]]
-    constexpr auto omega(this Self&& self) noexcept -> decltype(auto) {
-        return self.m_data[6];
-    }
-
-  private:
-    friend zpp::bits::access;
-    using serialize = zpp::bits::members<1>;
-
-    // x, y, yaw, u, delta, a and omega, in this order.
-    std::array<value_type, 7> m_data{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-};
-
-/**
- * @brief State of a KinematicsFlowController whose horizon adapts: the plant state, the two
- * controls and the horizon.
- */
-template <std::floating_point T>
-class KinematicsFlowControllerState<T, true> final : public ::basjoo::math::DenseArithmeticBase {
-  public:
-    using value_type = T;
-    using size_type = std::size_t;
-    using index_type = std::size_t;
-    using rank_type = std::size_t;
     using extents_type = std::extents<index_type, 8>;
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
     constexpr KinematicsFlowControllerState() noexcept = default;
 
-    // Every field set to v, the horizon included. Generic code builds the zero of a value type as
-    // value_type{0.0}, which the default state is not, as its horizon defaults to one.
+    // Every field set to v, the heading included. Generic code builds the zero of a value type as
+    // value_type{0.0}, which the default state is not, as its heading has cos_yaw = 1.
     constexpr explicit KinematicsFlowControllerState(value_type v) noexcept
         : m_data{v, v, v, v, v, v, v, v} {}
 
+    // The fields in storage order, one parameter each. sin_yaw and cos_yaw have to make up a unit
+    // complex number, sin_yaw^2 + cos_yaw^2 = 1, for the state to be one the integrators take and
+    // KinematicsFlowController::tangent() and cost() evaluate exactly. Nothing here checks it, as
+    // tangent() builds its result, which is no state, here as well.
     constexpr KinematicsFlowControllerState(
-        value_type x, value_type y, value_type yaw, value_type u, value_type delta, value_type a,
-        value_type omega, value_type tau
+        value_type x, value_type y, value_type sin_yaw, value_type cos_yaw, value_type u,
+        value_type delta, value_type a, value_type omega
     ) noexcept
-        : m_data{x, y, yaw, u, delta, a, omega, tau} {}
+        : m_data{x, y, sin_yaw, cos_yaw, u, delta, a, omega} {}
 
     [[using gnu: const, always_inline, leaf]]
     static constexpr auto rank() noexcept -> rank_type {
@@ -236,46 +134,196 @@ class KinematicsFlowControllerState<T, true> final : public ::basjoo::math::Dens
 
     template <typename Self>
     [[using gnu: pure, always_inline]]
-    constexpr auto yaw(this Self&& self) noexcept -> decltype(auto) {
+    constexpr auto sin_yaw(this Self&& self) noexcept -> decltype(auto) {
         return self.m_data[2];
     }
 
     template <typename Self>
     [[using gnu: pure, always_inline]]
-    constexpr auto u(this Self&& self) noexcept -> decltype(auto) {
+    constexpr auto cos_yaw(this Self&& self) noexcept -> decltype(auto) {
         return self.m_data[3];
     }
 
     template <typename Self>
     [[using gnu: pure, always_inline]]
-    constexpr auto delta(this Self&& self) noexcept -> decltype(auto) {
+    constexpr auto u(this Self&& self) noexcept -> decltype(auto) {
         return self.m_data[4];
     }
 
     template <typename Self>
     [[using gnu: pure, always_inline]]
-    constexpr auto a(this Self&& self) noexcept -> decltype(auto) {
+    constexpr auto delta(this Self&& self) noexcept -> decltype(auto) {
         return self.m_data[5];
     }
 
     template <typename Self>
     [[using gnu: pure, always_inline]]
-    constexpr auto omega(this Self&& self) noexcept -> decltype(auto) {
+    constexpr auto a(this Self&& self) noexcept -> decltype(auto) {
         return self.m_data[6];
     }
 
     template <typename Self>
     [[using gnu: pure, always_inline]]
-    constexpr auto tau(this Self&& self) noexcept -> decltype(auto) {
+    constexpr auto omega(this Self&& self) noexcept -> decltype(auto) {
         return self.m_data[7];
+    }
+
+    /**
+     * @brief Yaw angle of the heading, atan2(sin_yaw, cos_yaw) within [-pi, pi], whatever the norm
+     * of the heading.
+     */
+    [[using gnu: pure, always_inline]]
+    auto yaw() const noexcept -> value_type {
+        return std::atan2(m_data[2], m_data[3]);
     }
 
   private:
     friend zpp::bits::access;
     using serialize = zpp::bits::members<1>;
 
-    // x, y, yaw, u, delta, a, omega and tau, in this order.
-    std::array<value_type, 8> m_data{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+    // x, y, sin_yaw, cos_yaw, u, delta, a and omega, in this order.
+    std::array<value_type, 8> m_data{0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+};
+
+/**
+ * @brief State of a KinematicsFlowController whose horizon adapts: the plant state, the two
+ * controls and the horizon.
+ */
+template <std::floating_point T>
+class KinematicsFlowControllerState<T, true> final : public ::basjoo::math::DenseArithmeticBase {
+  public:
+    using value_type = T;
+    using size_type = std::size_t;
+    using index_type = std::size_t;
+    using rank_type = std::size_t;
+    using extents_type = std::extents<index_type, 9>;
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
+
+    constexpr KinematicsFlowControllerState() noexcept = default;
+
+    // Every field set to v, the heading and the horizon included. Generic code builds the zero of
+    // a value type as value_type{0.0}, which the default state is not, as its heading has
+    // cos_yaw = 1 and its horizon defaults to one.
+    constexpr explicit KinematicsFlowControllerState(value_type v) noexcept
+        : m_data{v, v, v, v, v, v, v, v, v} {}
+
+    // The fields in storage order, one parameter each. sin_yaw and cos_yaw have to make up a unit
+    // complex number, sin_yaw^2 + cos_yaw^2 = 1, for the state to be one the integrators take and
+    // KinematicsFlowController::tangent() and cost() evaluate exactly. Nothing here checks it, as
+    // tangent() builds its result, which is no state, here as well.
+    // NOLINTBEGIN(readability-function-size)
+    constexpr KinematicsFlowControllerState(
+        value_type x, value_type y, value_type sin_yaw, value_type cos_yaw, value_type u,
+        value_type delta, value_type a, value_type omega, value_type tau
+    ) noexcept
+        : m_data{x, y, sin_yaw, cos_yaw, u, delta, a, omega, tau} {}
+    // NOLINTEND(readability-function-size)
+
+    [[using gnu: const, always_inline, leaf]]
+    static constexpr auto rank() noexcept -> rank_type {
+        return 1;
+    }
+
+    [[using gnu: const, always_inline, leaf]]
+    static constexpr auto extent([[maybe_unused]] rank_type r) noexcept -> index_type {
+        return size();
+    }
+
+    [[using gnu: const, always_inline, leaf]]
+    static constexpr auto size() noexcept -> size_type {
+        return 9;
+    }
+
+    [[using gnu: pure, always_inline]]
+    constexpr auto data() noexcept -> pointer {
+        return m_data.data();
+    }
+
+    [[using gnu: pure, always_inline]]
+    constexpr auto data() const noexcept -> const_pointer {
+        return m_data.data();
+    }
+
+    [[using gnu: pure, always_inline]]
+    constexpr auto operator[](index_type i) noexcept -> value_type& {
+        return data()[i];
+    }
+
+    [[using gnu: pure, always_inline]]
+    constexpr auto operator[](index_type i) const noexcept -> const value_type& {
+        return data()[i];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto x(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[0];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto y(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[1];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto sin_yaw(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[2];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto cos_yaw(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[3];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto u(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[4];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto delta(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[5];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto a(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[6];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto omega(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[7];
+    }
+
+    template <typename Self>
+    [[using gnu: pure, always_inline]]
+    constexpr auto tau(this Self&& self) noexcept -> decltype(auto) {
+        return self.m_data[8];
+    }
+
+    /**
+     * @brief Yaw angle of the heading, atan2(sin_yaw, cos_yaw) within [-pi, pi], whatever the norm
+     * of the heading.
+     */
+    [[using gnu: pure, always_inline]]
+    auto yaw() const noexcept -> value_type {
+        return std::atan2(m_data[2], m_data[3]);
+    }
+
+  private:
+    friend zpp::bits::access;
+    using serialize = zpp::bits::members<1>;
+
+    // x, y, sin_yaw, cos_yaw, u, delta, a, omega and tau, in this order.
+    std::array<value_type, 9> m_data{0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0};
 };
 
 /**
@@ -285,9 +333,9 @@ class KinematicsFlowControllerState<T, true> final : public ::basjoo::math::Dens
  * Every integrator steps the plant under the controls the state carries and steps the controls
  * along the preconditioned negative gradient of a cost that compares a one step prediction of the
  * plant over a horizon tau against a target (see tangent()). With Adaptive false the horizon is a
- * constant of the controller. With Adaptive true it is a field of the state and descends the same
- * cost alongside the controls, and at the horizon a state carries the controls are steered exactly
- * as by the controller with that fixed horizon.
+ * constant of the controller. With Adaptive true it is a field of the state, kept within bounds
+ * the controller carries, and descends the same cost alongside the controls, and at the horizon a
+ * state carries the controls are steered exactly as by the controller with that fixed horizon.
  */
 template <std::floating_point T, bool Adaptive = false>
 class KinematicsFlowController final {
@@ -310,9 +358,9 @@ class KinematicsFlowController final {
      * @brief Builds a controller from the plant model, the four cost weights and the horizon.
      *
      * The model carries the geometry and the hard bounds on the two controls, and model() hands it
-     * back. The weights weigh in turn the position, yaw, u and delta residuals of the prediction
-     * against the target, so the a and omega of any target are ignored. Every term is made
-     * dimensionless before it is weighed, so the four weights are pure numbers and directly
+     * back. The weights weigh in turn the position, heading, u and delta residuals of the
+     * prediction against the target, so the a and omega of any target are ignored. Every term is
+     * made dimensionless before it is weighed, so the four weights are pure numbers and directly
      * comparable with each other. One weight covers x and y together, which leaves the cost
      * independent of how the world frame is oriented. See tangent() for the cost they enter.
      */
@@ -336,17 +384,32 @@ class KinematicsFlowController final {
     }
 
     /**
-     * @brief Builds a controller whose horizon adapts from the plant model and the four cost
-     * weights.
+     * @brief Builds a controller whose horizon adapts from the plant model, the four cost weights
+     * and the bounds the horizon is kept within.
      *
      * The horizon comes with the state instead, and the a, omega and tau of any target are
-     * ignored. The weights are those of the controller with a fixed horizon.
+     * ignored. The weights are those of the controller with a fixed horizon. The upper bound may be
+     * infinite, while a lower bound of zero leaves the horizon free to sink as far as the checks of
+     * the integrators let it.
      */
     explicit KinematicsFlowController(
-        model_type model, std::span<const value_type, 4> weights
-    ) noexcept
+        model_type model, std::span<const value_type, 4> weights, value_type tau_lower_bound,
+        value_type tau_upper_bound
+    ) noexcept(!BASJOO_CHECK_PARAMS)
         requires Adaptive
-        : m_model{std::move(model)} {
+        : m_model{std::move(model)}, m_tau_lower{tau_lower_bound}, m_tau_upper{tau_upper_bound} {
+#if BASJOO_CHECK_PARAMS == 1
+        if (!(0.0 <= tau_lower_bound && tau_lower_bound <= tau_upper_bound)) [[unlikely]] {
+            throw std::invalid_argument(
+                std::format(
+                    "Invalid arguments detected! basjoo::bicycle::KinematicsFlowController "
+                    "requires horizon bounds with 0 <= tau_lower_bound <= tau_upper_bound: "
+                    "tau_lower_bound = {0:f} while tau_upper_bound = {1:f}.",
+                    tau_lower_bound, tau_upper_bound
+                )
+            );
+        }
+#endif
         std::ranges::copy_n(weights.begin(), 4, m_weights.begin());
     }
 
@@ -372,19 +435,56 @@ class KinematicsFlowController final {
     }
 
     /**
+     * @brief Lowest horizon a state is clamped to. Only a controller whose horizon adapts has one.
+     */
+    [[using gnu: pure, always_inline]]
+    constexpr auto tau_lower_bound() const noexcept -> value_type
+        requires Adaptive
+    {
+        return m_tau_lower;
+    }
+
+    /**
+     * @brief Highest horizon a state is clamped to. Only a controller whose horizon adapts has one.
+     */
+    [[using gnu: pure, always_inline]]
+    constexpr auto tau_upper_bound() const noexcept -> value_type
+        requires Adaptive
+    {
+        return m_tau_upper;
+    }
+
+    /**
      * @brief Advances the closed loop by one step of length h with forward Euler.
      *
      * The plant, the controls and, when Adaptive is true, the horizon all take one Euler step
      * along tangent() evaluated at the start of the step, which leaves the plant where
-     * KinematicsModel::forwardEuler() puts it under the controls the step starts with. The controls
-     * are then clamped into the bounds the model carries. The horizon the step starts with has to
-     * span at least the step.
+     * KinematicsModel::forwardEuler() puts it under the controls the step starts with, its heading
+     * normalized at the end of the step as there. The controls are then clamped into the bounds the
+     * model carries, and an adaptive horizon into the bounds of the controller. The horizon the
+     * step starts with has to span at least the step.
      */
     [[using gnu: always_inline]]
     auto forwardEuler(
         state_type initial_state, const state_type& target_state, value_type h
     ) const noexcept(!BASJOO_CHECK_PARAMS) -> state_type {
 #if BASJOO_CHECK_PARAMS == 1
+        // |z|^2 within sqrt(epsilon) of one, about half the digits.
+        const value_type heading_sqr{
+            initial_state.sin_yaw() * initial_state.sin_yaw() +
+            initial_state.cos_yaw() * initial_state.cos_yaw()
+        };
+        if (!(std::abs(heading_sqr - static_cast<value_type>(1.0)) <=
+              std::sqrt(std::numeric_limits<value_type>::epsilon()))) [[unlikely]] {
+            throw std::invalid_argument(
+                std::format(
+                    "Invalid arguments detected! "
+                    "basjoo::bicycle::KinematicsFlowController::forwardEuler() requires the "
+                    "heading of initial_state to be a unit complex number: |z|^2 = {0:f}.",
+                    heading_sqr
+                )
+            );
+        }
         if (!(std::abs(initial_state.delta()) < std::numbers::pi_v<value_type> * 0.5))
             [[unlikely]] {
             throw std::invalid_argument(
@@ -418,6 +518,12 @@ class KinematicsFlowController final {
         }
 #endif
         initial_state += tangent(initial_state, target_state, horizonOf(initial_state)) * h;
+        const value_type norm{std::sqrt(
+            initial_state.sin_yaw() * initial_state.sin_yaw() +
+            initial_state.cos_yaw() * initial_state.cos_yaw()
+        )};
+        initial_state.sin_yaw() /= norm;
+        initial_state.cos_yaw() /= norm;
         initial_state.a() = std::clamp(
             initial_state.a(), m_model.control_lower_bound().a(), m_model.control_upper_bound().a()
         );
@@ -425,6 +531,9 @@ class KinematicsFlowController final {
             initial_state.omega(), m_model.control_lower_bound().omega(),
             m_model.control_upper_bound().omega()
         );
+        if constexpr (Adaptive) {
+            initial_state.tau() = std::clamp(initial_state.tau(), m_tau_lower, m_tau_upper);
+        }
         return initial_state;
     }
 
@@ -437,11 +546,13 @@ class KinematicsFlowController final {
      * so the plant at each stage runs under the controls of that stage, clamped into the bounds the
      * model carries, as is the result of the step. The target is the point of the reference the
      * horizon looks ahead to from the start of the step, and it is held over the step while the
-     * vehicle moves on towards it, so every stage looks ahead over its horizon less its stage time,
-     * which is what is left to reach that point from where the stage sits. The stage time enters
-     * the stages alone: an adaptive horizon itself moves by its rate only. The horizon the step
-     * starts with has to span more than the step, which keeps the target ahead of the last stage
-     * as well.
+     * vehicle moves on towards it, so every stage looks ahead over its horizon, clamped into the
+     * bounds where it adapts, less its stage time, which is what is left to reach that point from
+     * where the stage sits. The stage time enters the stages alone: an adaptive horizon itself
+     * moves by its rate only, and is clamped into its bounds at the end of the step. The stages are
+     * left off unit norm, which tangent() takes, and only the heading of the step is normalized.
+     * The horizon the step starts with has to span more than the step, which keeps the target ahead
+     * of the last stage as well.
      *
      * Only one target comes in per step, so against a reference that moves on over the step the
      * closed loop is followed to first order in h only, as it is by forwardEuler(): fourth order
@@ -452,6 +563,22 @@ class KinematicsFlowController final {
         state_type initial_state, const state_type& target_state, value_type h
     ) const noexcept(!BASJOO_CHECK_PARAMS) -> state_type {
 #if BASJOO_CHECK_PARAMS == 1
+        // |z|^2 within sqrt(epsilon) of one, about half the digits.
+        const value_type heading_sqr{
+            initial_state.sin_yaw() * initial_state.sin_yaw() +
+            initial_state.cos_yaw() * initial_state.cos_yaw()
+        };
+        if (!(std::abs(heading_sqr - static_cast<value_type>(1.0)) <=
+              std::sqrt(std::numeric_limits<value_type>::epsilon()))) [[unlikely]] {
+            throw std::invalid_argument(
+                std::format(
+                    "Invalid arguments detected! "
+                    "basjoo::bicycle::KinematicsFlowController::rungeKutta() requires the heading "
+                    "of initial_state to be a unit complex number: |z|^2 = {0:f}.",
+                    heading_sqr
+                )
+            );
+        }
         if (!(std::abs(initial_state.delta()) < std::numbers::pi_v<value_type> * 0.5))
             [[unlikely]] {
             throw std::invalid_argument(
@@ -492,6 +619,12 @@ class KinematicsFlowController final {
         const state_type s4{initial_state + k3};
         const state_type k4{tangent(s4, target_state, horizonOf(s4) - h) * h};
         initial_state += k1 * kSixth + k2 * kThird + k3 * kThird + k4 * kSixth;
+        const value_type norm{std::sqrt(
+            initial_state.sin_yaw() * initial_state.sin_yaw() +
+            initial_state.cos_yaw() * initial_state.cos_yaw()
+        )};
+        initial_state.sin_yaw() /= norm;
+        initial_state.cos_yaw() /= norm;
         initial_state.a() = std::clamp(
             initial_state.a(), m_model.control_lower_bound().a(), m_model.control_upper_bound().a()
         );
@@ -499,6 +632,9 @@ class KinematicsFlowController final {
             initial_state.omega(), m_model.control_lower_bound().omega(),
             m_model.control_upper_bound().omega()
         );
+        if constexpr (Adaptive) {
+            initial_state.tau() = std::clamp(initial_state.tau(), m_tau_lower, m_tau_upper);
+        }
         return initial_state;
     }
 
@@ -562,31 +698,37 @@ class KinematicsFlowController final {
      * @brief Tangent vector of the closed loop flow at the given state.
      *
      * State doubles as its own tangent space here, so the returned object is not a state. Its
-     * first five fields are the plant flow, the same as KinematicsModel::tangent() returns under
+     * first six fields are the plant flow, the same as KinematicsModel::tangent() returns under
      * the two controls of the given state. Its a and omega fields, and its tau field when Adaptive
      * is true, carry the controller down the tracking cost
      *
-     *     J = (w0 (Rx^2 + Ry^2) / L^2 + w1 Ryaw^2 + w2 (tau Ru / L)^2 + w3 Rdelta^2) / 2,
+     *     J = (w0 (Rx^2 + Ry^2) / L^2 + w1 |Rz|^2 + w2 (tau Ru / L)^2 + w3 Rdelta^2) / 2,
      *
      * which compares a one step prediction of the plant over the horizon tau against the target
      * state, ignoring the controls and the horizon of the target. Every term is divided by the
      * wheelbase L and by tau until it is dimensionless. The prediction is the Taylor expansion of
-     * the flow of KinematicsModel under the two controls held over the horizon, exact through tau^2
-     * and cut down at tau^3 to the terms at most linear in the controls. That drops only the terms
-     * in which the steering rate multiplies the acceleration or itself, and it leaves every
+     * the flow of KinematicsModel under the two controls held over the horizon. The position is
+     * taken exact through tau^2 and cut down at tau^3 to the terms at most linear in the controls,
+     * which drops only the terms in which the steering rate multiplies the acceleration or itself,
+     * and the heading to tau^2, the order at which both controls have reached it. That leaves every
      * residual affine in a and omega:
      *
      *     r = u tan(delta) / L,   v = l_r r,
      *     rdot = (a tan(delta) + u omega sec^2(delta)) / L,   vdot = l_r rdot,
-     *     Vx = u cos(yaw) - v sin(yaw),   Vy = u sin(yaw) + v cos(yaw),
-     *     Ax = a cos(yaw) - vdot sin(yaw),   Ay = a sin(yaw) + vdot cos(yaw),
+     *     Vx + Vy i = z (u + v i),   Ax + Ay i = z (a + vdot i),
      *     Rx = x - x_ref + tau Vx + tau^2/2 (Ax - r Vy) + tau^3/6 (-r^2 Vx - 2 r Ay - rdot Vy),
      *     Ry = y - y_ref + tau Vy + tau^2/2 (Ay + r Vx) + tau^3/6 (-r^2 Vy + 2 r Ax + rdot Vx),
-     *     Ryaw = yaw - yaw_ref + tau r + tau^2/2 rdot,
+     *     Rz = z - z_ref + tau r i z + tau^2/2 (rdot i - r^2) z,
      *     Ru = u - u_ref + tau a,   Rdelta = delta - delta_ref + tau omega.
      *
-     * With the steering angle held, the prediction is therefore exact to third order in tau, and
-     * along a straight line under a constant acceleration it is exact outright.
+     * z = cos_yaw + sin_yaw i is the heading of the state and z_ref that of the target, both taken
+     * as they come, unnormalized, as KinematicsModel::tangent() takes the heading. The headings are
+     * compared field by field, in sin_yaw and cos_yaw: Rz is the difference of two neighbouring
+     * unit complex numbers, about the angle between them in radians while that is small, and as a
+     * heading has but one unit complex number, it never wraps. With the steering angle held, the
+     * prediction of the position is therefore exact to third order in tau and that of the heading
+     * to second, which leaves it off by about (tau r)^3 / 6 along a turn, and along a straight line
+     * under a constant acceleration the prediction is exact outright.
      *
      * The controls follow the preconditioned negative gradient
      *
@@ -606,24 +748,27 @@ class KinematicsFlowController final {
      *
      * preconditioned by itself, which keeps it positive along the flow,
      * tau(t) = tau(0) exp(-int dJ/dtau dt), though a step of an integrator still crosses zero once
-     * h dJ/dtau reaches one. dJ/dtau also takes in the horizon the u term is scaled by, which
+     * h dJ/dtau reaches one. Every integrator therefore clamps the horizon into [tau_lower_bound(),
+     * tau_upper_bound()] at the end of a step, as tangent() and cost() clamp the horizon of the
+     * state before they use it. dJ/dtau also takes in the horizon the u term is scaled by, which
      * pulls the horizon down for as long as the speed residual stays off zero. Nothing in the cost
      * ties the horizon to the time the target actually lies ahead: driving straight at the target
      * with its speed u and both controls at zero, a distance d short of it, tau = d / u zeroes
      * every residual and all three rates whatever d. The loop therefore does not close an along
-     * track offset, and the horizon takes it up instead. A caller that takes the target the
-     * horizon of the state ahead along the reference, rather than a fixed time ahead, ties the two
-     * together, and the loop then does close the offset. That leaves nothing to pin the horizon,
-     * though: on the reference every horizon all but zeroes the residuals, so the horizon drifts
-     * with whatever along track lag or lead the integrator leaves, growing while the vehicle lags
-     * and shrinking while it leads. Waypoints sparser than the step are to be interpolated at the
-     * time the horizon looks ahead to: the nearest waypoint lies up to half their spacing off that
-     * time, which shifts the target along track, and an adaptive horizon takes that offset up like
-     * any other.
+     * track offset, and the horizon takes it up instead, as far as its bounds let it. A caller that
+     * takes the target the horizon of the state ahead along the reference, rather than a fixed time
+     * ahead, ties the two together, and the loop then does close the offset. That leaves nothing to
+     * pin the horizon, though: on the reference every horizon all but zeroes the residuals, so the
+     * horizon drifts with whatever along track lag or lead the integrator leaves, growing while the
+     * vehicle lags and shrinking while it leads, until it runs into a bound. Waypoints sparser than
+     * the step are to be interpolated at the time the horizon looks ahead to: the nearest waypoint
+     * lies up to half their spacing off that time, which shifts the target along track, and an
+     * adaptive horizon takes that offset up like any other.
      *
      * Both the plant and the cost act on the two controls of the given state clamped into the
-     * bounds the model carries: whatever the caller hands in, and however far an intermediate stage
-     * of rungeKutta() has wandered, the flow comes out as it would at the state within the bounds.
+     * bounds the model carries and, when Adaptive is true, on its horizon clamped into the bounds
+     * of the controller: whatever the caller hands in, and however far an intermediate stage of
+     * rungeKutta() has wandered, the flow comes out as it would at the state within the bounds.
      */
     [[using gnu: always_inline]]
     auto tangent(const state_type& state, const state_type& target_state) const noexcept(
@@ -657,13 +802,13 @@ class KinematicsFlowController final {
             );
         }
         if constexpr (Adaptive) {
-            if (!(state.tau() > 0.0)) [[unlikely]] {
+            if (!(horizonOf(state) > 0.0)) [[unlikely]] {
                 throw std::invalid_argument(
                     std::format(
                         "Invalid arguments detected! "
                         "basjoo::bicycle::KinematicsFlowController::cost() requires a positive "
-                        "horizon: state.tau = {0:f}.",
-                        state.tau()
+                        "horizon: tau = {0:f}.",
+                        horizonOf(state)
                     )
                 );
             }
@@ -676,7 +821,7 @@ class KinematicsFlowController final {
 
   private:
     friend zpp::bits::access;
-    using serialize = zpp::bits::members<3>;
+    using serialize = zpp::bits::members<5>;
 
     static constexpr value_type kHalf{static_cast<value_type>(0.5)};
     static constexpr value_type kThird{static_cast<value_type>(1.0 / 3.0)};
@@ -691,7 +836,8 @@ class KinematicsFlowController final {
     struct Residuals final {
         value_type x{0.0};
         value_type y{0.0};
-        value_type yaw{0.0};
+        value_type sin_yaw{0.0};
+        value_type cos_yaw{0.0};
         value_type u{0.0};
         value_type delta{0.0};
     };
@@ -710,13 +856,13 @@ class KinematicsFlowController final {
 
     /**
      * @brief Horizon the prediction runs over at the given state: the controller's own, or the one
-     * the state carries when Adaptive is true.
+     * the state carries, clamped into the bounds of the controller, when Adaptive is true.
      */
     [[using gnu: pure, always_inline]]
     constexpr auto horizonOf([[maybe_unused]] const state_type& state) const noexcept
         -> value_type {
         if constexpr (Adaptive) {
-            return state.tau();
+            return std::clamp(state.tau(), m_tau_lower, m_tau_upper);
         } else {
             return m_tau;
         }
@@ -733,10 +879,11 @@ class KinematicsFlowController final {
     auto weigh(const Residuals& lhs, const Residuals& rhs, value_type tau) const noexcept
         -> value_type {
         const value_type L{m_model.wheelbase()};
-        return (m_weights[0] * (lhs.x * rhs.x + lhs.y * rhs.y) + m_weights[1] * lhs.yaw * rhs.yaw +
+        return (m_weights[0] * (lhs.x * rhs.x + lhs.y * rhs.y) +
                 m_weights[2] * tau * tau * lhs.u * rhs.u) /
                    (L * L) +
-               +m_weights[3] * lhs.delta * rhs.delta;
+               m_weights[1] * (lhs.sin_yaw * rhs.sin_yaw + lhs.cos_yaw * rhs.cos_yaw) +
+               m_weights[3] * lhs.delta * rhs.delta;
     }
 
     /**
@@ -746,7 +893,8 @@ class KinematicsFlowController final {
      * Every residual is a polynomial of degree three at most in tau whose coefficients are affine
      * in the two controls, so its partial derivatives by a and omega follow from those of the
      * coefficients. The coefficients of tau make up the plant flow itself, which tangent() hands on
-     * as it is.
+     * as it is. The rotation and the plant flow are spelled out as KinematicsModel::tangent()
+     * spells them.
      */
     [[using gnu: pure, always_inline]]
     auto expand(
@@ -761,8 +909,8 @@ class KinematicsFlowController final {
         )};
         const value_type L{m_model.wheelbase()};
         const value_type lr{m_model.rear_wheelbase()};
-        const value_type sin_yaw{std::sin(state.yaw())};
-        const value_type cos_yaw{std::cos(state.yaw())};
+        const value_type sin_yaw{state.sin_yaw()};
+        const value_type cos_yaw{state.cos_yaw()};
         const value_type tan_delta{std::tan(state.delta())};
         const value_type cos_delta{std::cos(state.delta())};
         const value_type sec2_delta{static_cast<value_type>(1.0) / (cos_delta * cos_delta)};
@@ -770,6 +918,9 @@ class KinematicsFlowController final {
         const value_type v{lr * r};
         const value_type vx{state.u() * cos_yaw - v * sin_yaw};
         const value_type vy{state.u() * sin_yaw + v * cos_yaw};
+        // dz/dt = r i z, its imaginary part first as the heading is stored.
+        const value_type sin_yaw1{r * cos_yaw};
+        const value_type cos_yaw1{-r * sin_yaw};
         const value_type rdot_by_a{tan_delta / L};
         const value_type rdot_by_omega{state.u() * sec2_delta / L};
         const value_type rdot{a * rdot_by_a + omega * rdot_by_omega};
@@ -780,36 +931,46 @@ class KinematicsFlowController final {
         const value_type x3{kSixth * (-r * r * vx - kTwo * r * ay - rdot * vy)};
         const value_type y2{kHalf * (ay + r * vx)};
         const value_type y3{kSixth * (-r * r * vy + kTwo * r * ax + rdot * vx)};
-        const value_type yaw2{kHalf * rdot};
+        // d^2z/dt^2 / 2 = (rdot i - r^2) z / 2, its imaginary part first.
+        const value_type sin_yaw2{kHalf * (rdot * cos_yaw - r * r * sin_yaw)};
+        const value_type cos_yaw2{kHalf * (-rdot * sin_yaw - r * r * cos_yaw)};
         const value_type ax_by_a{cos_yaw - lr * rdot_by_a * sin_yaw};
         const value_type ay_by_a{sin_yaw + lr * rdot_by_a * cos_yaw};
         const value_type ax_by_omega{-lr * rdot_by_omega * sin_yaw};
         const value_type ay_by_omega{lr * rdot_by_omega * cos_yaw};
         const value_type tau2{tau * tau};
+        // The controls reach the heading through rdot i z / 2 in d^2z/dt^2 / 2 alone.
         Expansion expansion{
-            .flow = {vx, vy, r, a, omega},
+            .flow = {vx, vy, sin_yaw1, cos_yaw1, a, omega},
             .value =
                 {state.x() - target_state.x() + tau * (vx + tau * (x2 + tau * x3)),
                  state.y() - target_state.y() + tau * (vy + tau * (y2 + tau * y3)),
-                 state.yaw() - target_state.yaw() + tau * (r + tau * yaw2),
+                 sin_yaw - target_state.sin_yaw() + tau * (sin_yaw1 + tau * sin_yaw2),
+                 cos_yaw - target_state.cos_yaw() + tau * (cos_yaw1 + tau * cos_yaw2),
                  state.u() - target_state.u() + tau * a,
                  state.delta() - target_state.delta() + tau * omega},
             .by_a =
                 {tau2 * (kHalf * ax_by_a - tau * kSixth * (kTwo * r * ay_by_a + rdot_by_a * vy)),
                  tau2 * (kHalf * ay_by_a + tau * kSixth * (kTwo * r * ax_by_a + rdot_by_a * vx)),
-                 tau2 * kHalf * rdot_by_a, tau, static_cast<value_type>(0.0)},
+                 tau2 * kHalf * rdot_by_a * cos_yaw, -tau2 * kHalf * rdot_by_a * sin_yaw, tau,
+                 static_cast<value_type>(0.0)},
             .by_omega =
                 {tau2 * (kHalf * ax_by_omega -
                          tau * kSixth * (kTwo * r * ay_by_omega + rdot_by_omega * vy)),
                  tau2 * (kHalf * ay_by_omega +
                          tau * kSixth * (kTwo * r * ax_by_omega + rdot_by_omega * vx)),
-                 tau2 * kHalf * rdot_by_omega, static_cast<value_type>(0.0), tau},
+                 tau2 * kHalf * rdot_by_omega * cos_yaw, -tau2 * kHalf * rdot_by_omega * sin_yaw,
+                 static_cast<value_type>(0.0), tau},
             .by_tau = {}
         };
         if constexpr (Adaptive) {
             expansion.by_tau = {
                 vx + tau * (kTwo * x2 + kThree * tau * x3),
-                vy + tau * (kTwo * y2 + kThree * tau * y3), r + tau * rdot, a, omega
+                vy + tau * (kTwo * y2 + kThree * tau * y3),
+                sin_yaw1 + kTwo * tau * sin_yaw2,
+                cos_yaw1 + kTwo * tau * cos_yaw2,
+                a,
+                omega
             };
         }
         return expansion;
@@ -860,10 +1021,11 @@ class KinematicsFlowController final {
                 -tau * (weigh(expansion.value, expansion.by_tau, tau) +
                         m_weights[2] * tau * expansion.value.u * expansion.value.u / (L * L))
             };
-            return state_type{flow.x,     flow.y, flow.yaw,   flow.u,
-                              flow.delta, a_rate, omega_rate, tau_rate};
+            return state_type{flow.x,     flow.y, flow.sin_yaw, flow.cos_yaw, flow.u,
+                              flow.delta, a_rate, omega_rate,   tau_rate};
         } else {
-            return state_type{flow.x, flow.y, flow.yaw, flow.u, flow.delta, a_rate, omega_rate};
+            return state_type{flow.x, flow.y,     flow.sin_yaw, flow.cos_yaw,
+                              flow.u, flow.delta, a_rate,       omega_rate};
         }
     }
 
@@ -875,6 +1037,15 @@ class KinematicsFlowController final {
     // NaN and unused when Adaptive is true, where the state carries the horizon.
     value_type m_tau{
         Adaptive ? std::numeric_limits<value_type>::quiet_NaN() : static_cast<value_type>(1.0)
+    };
+    // The bounds an adaptive horizon is kept within, by default none at all. NaN and unused when
+    // Adaptive is false.
+    value_type m_tau_lower{
+        Adaptive ? static_cast<value_type>(0.0) : std::numeric_limits<value_type>::quiet_NaN()
+    };
+    value_type m_tau_upper{
+        Adaptive ? std::numeric_limits<value_type>::infinity()
+                 : std::numeric_limits<value_type>::quiet_NaN()
     };
 };
 

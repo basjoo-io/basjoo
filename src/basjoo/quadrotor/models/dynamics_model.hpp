@@ -308,9 +308,12 @@ class DynamicsModelControl final : public ::basjoo::math::DenseArithmeticBase {
  *
  * The attitude is integrated in R^4, which lets |q| drift off one, so every integrator normalizes
  * it at the end of its step. forwardEuler() and rungeKutta() are the plain explicit schemes, linear
- * combinations of tangents over all thirteen fields. tangent() takes an attitude of any non-zero
- * norm and rotates through q / |q|, so the stages of rungeKutta() and interpolated states, which
- * are off unit norm, are evaluated as their normalized attitude.
+ * combinations of tangents over all thirteen fields. tangent() takes the attitude as it comes,
+ * without normalizing it, so at the stages of rungeKutta(), whose |q|^2 is off one by up to about
+ * h^2 |omega|^2 / 4, its rotation is off orthogonal by as much. That costs rungeKutta() no order:
+ * the exact flow keeps |q| constant, and on the unit sphere it is the flow of the normalized
+ * attitude. A state handed to tangent() directly, an interpolated one included, has to carry a
+ * unit attitude for its flow to come out exact.
  *
  * The four controls are hard bounded, each on its own. tangent(), and with it every integrator,
  * clamps them into [control_lower_bound(), control_upper_bound()] before it acts on them, so the
@@ -593,10 +596,11 @@ class DynamicsModel final {
      * body velocity, its attitude fields dq/dt and its omega fields the angular acceleration. It is
      * only meant to be scaled and added onto a state.
      *
-     * The attitude may have any non-zero norm. The rotation is taken of q / |q|, with the entries
-     * of R written as forms of degree two in q scaled by 2 / |q|^2, while dq/dt = q (omega, 0) / 2
-     * scales with q, which is what keeps the flow on the sphere |q| = const. The controls are
-     * clamped into their bounds here, which is where every integrator picks up the clamp.
+     * The attitude is taken as it comes: the entries of R are the forms of degree two in q that
+     * make up the rotation of a unit q, off orthogonal by about |q|^2 - 1 otherwise, while
+     * dq/dt = q (omega, 0) / 2 scales with q, which is what keeps the flow on the sphere
+     * |q| = const. The controls are clamped into their bounds here, which is where every integrator
+     * picks up the clamp.
      */
     [[using gnu: pure, always_inline]]
     auto tangent(const state_type& state, const control_type& control) const noexcept
@@ -617,16 +621,16 @@ class DynamicsModel final {
         const value_type qy{state.qy()};
         const value_type qz{state.qz()};
         const value_type qw{state.qw()};
-        const value_type s{static_cast<value_type>(2.0) / (qx * qx + qy * qy + qz * qz + qw * qw)};
-        const value_type r00{static_cast<value_type>(1.0) - s * (qy * qy + qz * qz)};
-        const value_type r01{s * (qx * qy - qz * qw)};
-        const value_type r02{s * (qx * qz + qy * qw)};
-        const value_type r10{s * (qx * qy + qz * qw)};
-        const value_type r11{static_cast<value_type>(1.0) - s * (qx * qx + qz * qz)};
-        const value_type r12{s * (qy * qz - qx * qw)};
-        const value_type r20{s * (qx * qz - qy * qw)};
-        const value_type r21{s * (qy * qz + qx * qw)};
-        const value_type r22{static_cast<value_type>(1.0) - s * (qx * qx + qy * qy)};
+        constexpr value_type kTwo{static_cast<value_type>(2.0)};
+        const value_type r00{static_cast<value_type>(1.0) - kTwo * (qy * qy + qz * qz)};
+        const value_type r01{kTwo * (qx * qy - qz * qw)};
+        const value_type r02{kTwo * (qx * qz + qy * qw)};
+        const value_type r10{kTwo * (qx * qy + qz * qw)};
+        const value_type r11{static_cast<value_type>(1.0) - kTwo * (qx * qx + qz * qz)};
+        const value_type r12{kTwo * (qy * qz - qx * qw)};
+        const value_type r20{kTwo * (qx * qz - qy * qw)};
+        const value_type r21{kTwo * (qy * qz + qx * qw)};
+        const value_type r22{static_cast<value_type>(1.0) - kTwo * (qx * qx + qy * qy)};
         const value_type u{state.u()};
         const value_type v{state.v()};
         const value_type w{state.w()};

@@ -1450,23 +1450,6 @@ TEST_CASE_TEMPLATE("TangentFollowsTheEquationsOfMotion", T, float, double) {
         );
     }
 
-    SUBCASE("AttitudeOfAnyNormRotatesAsItsUnitOne") {
-        // The stages of rungeKutta() and interpolated states carry an attitude off unit norm.
-        // Scaling it has to leave every field alone but dq/dt, which scales along with it.
-        constexpr T kScale{static_cast<T>(1.7)};
-        State<T> scaled{state};
-        scaled.qx() *= kScale;
-        scaled.qy() *= kScale;
-        scaled.qz() *= kScale;
-        scaled.qw() *= kScale;
-        const State<T> k{model.tangent(state, control)};
-        const State<T> k_scaled{model.tangent(scaled, control)};
-        CHECK_LE(positionOf(k_scaled).euclideanTo(positionOf(k)), tolerance);
-        CHECK_LE(velocityOf(k_scaled).euclideanTo(velocityOf(k)), tolerance);
-        CHECK_LE(omegaOf(k_scaled).euclideanTo(omegaOf(k)), tolerance);
-        CHECK_LE(distanceOf(attitudeOf(k_scaled), attitudeOf(k) * kScale), tolerance);
-    }
-
     SUBCASE("TheFlowKeepsTheNormOfTheAttitude") {
         // dq/dt is orthogonal to q, which is what keeps |q| constant along the exact flow and
         // leaves only the integrators' own error for the normalization to take out.
@@ -1864,7 +1847,7 @@ auto checkInterpolation(const Value& origin, const Value& rate) -> void {
 
 TEST_CASE_TEMPLATE("StateTrajectoriesInterpolate", T, float, double) {
     // The attitude fields are interpolated field by field like the others, which takes them off
-    // unit norm between the samples; tangent() takes such states as their normalized attitude.
+    // unit norm between the samples; tangent() takes such states as they come.
     checkInterpolation(
         stateOf(
             makeVec3<T>(1.5, -2.5, 0.3), makeVec3<T>(0.15, 7.5, -1.0),
@@ -2087,6 +2070,7 @@ TEST_CASE_TEMPLATE("RejectsInvalidArguments", T, float, double) {
 
 auto main(int argc, const char* argv[]) -> int {
     cxxopts::Options options("dynamics_model_test", "unit test of DynamicsModel class");
+    options.allow_unrecognised_options(); // doctest reads its own flags from argv below
     options.add_options()(
         "plot-graph", "plot test graph", cxxopts::value<bool>()->default_value("false")
     );

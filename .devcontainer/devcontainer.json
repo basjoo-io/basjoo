@@ -9,8 +9,8 @@
       "BASE_IMAGE": "ubuntu:latest",
       "GCC_VERSION_MAJOR": "16",
       "CLANG_VERSION_MAJOR": "22",
-      "CMAKE_VERSION": "4.4.3",
-      "XMAKE_VERSION": "3.1.1",
+      "CMAKE_VERSION": "4.4.5",
+      "XMAKE_VERSION": "3.1.2",
       "ROS_DISTRO": "lyrical"
     }
   },

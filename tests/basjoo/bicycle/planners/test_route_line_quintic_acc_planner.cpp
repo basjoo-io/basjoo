@@ -338,6 +338,7 @@ auto main(int argc, const char* argv[]) -> int {
     cxxopts::Options options(
         "route_line_quintic_acc_planner_test", "unit test of RouteLineQuinticAccPlanner class"
     );
+    options.allow_unrecognised_options(); // doctest reads its own flags from argv below
     options.add_options()(
         "plot-graph", "plot test graph", cxxopts::value<bool>()->default_value("false")
     );

@@ -28,7 +28,7 @@ basjoo 是一个以头文件为主的 **C++23** 数学库，提供规划与控�
 | `math`    | `basjoo::math`    | 稠密 `Vec2`/`Vec3`/`Mat22`/`Mat33`/`Vector`/`Matrix` 及 LU/QR 分解（可选 BLAS/LAPACK、AVX-512）；稀疏 DOK/LIL/COO/CSR/CSC 及 QDLDL；线性/三次/五次曲线与函数；多元函数；FFT、Chebyshev、定点数、多边形、四元数 |
 | `cvxopm`  | `basjoo::cvxopm`  | 基于 OSQP 的稀疏二次规划；面向稠密问题的 L-BFGS、BFGS、Nelder–Mead 与线搜索求解器                      |
 | `bicycle` | `basjoo::bicycle` | 参考线、路径、运动、边界、围栏；基于 QP 的加速度/横向偏移/运动学规划器；运动学/动力学模型；PID、前馈、MPC 与流控制器 |
-| `quadrotor` | `basjoo::quadrotor` | 由机体力矩与总推力驱动的刚体动力学模型 |
+| `quadrotor` | `basjoo::quadrotor` | 由机体力矩与总推力驱动的刚体动力学模型；流控制器 |
 
 模块依赖严格遵循 `common → math → cvxopm → bicycle`；`quadrotor` 与 `bicycle` 平级，只依赖 `math`。曲线、函数与稀疏矩阵通过 [Microsoft Proxy](https://github.com/microsoft/proxy) 实现类型擦除，并可通过 [zpp_bits](https://github.com/eyalz800/zpp_bits) 序列化。
 

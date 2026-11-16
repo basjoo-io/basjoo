@@ -1,0 +1,11 @@
+basjoo_cxx_library(
+  NAME
+    quadrotor_dynamics_flow_controller
+  HDRS
+    "dynamics_flow_controller.hpp"
+  DEPS
+    zpp_bits
+    math_dense_arithmetic_base
+    math_integrate_mode
+    quadrotor_dynamics_model
+)
